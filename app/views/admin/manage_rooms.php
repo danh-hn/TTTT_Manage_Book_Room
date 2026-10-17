@@ -1,27 +1,3 @@
-<?php
-// Bắt buộc phải có session_start() ở dòng đầu tiên để đọc dữ liệu phiên làm việc
-session_start();
-
-// 1. CHỐT CHẶN BẢO MẬT: Kiểm tra xem người dùng đã đăng nhập chưa
-if (!isset($_SESSION['user_id'])) {
-    header("Location: ../auth/login.php");
-    exit();
-}
-
-// 2. CHỐT CHẶN PHÂN QUYỀN: Trục xuất những ai không phải là Admin
-if ($_SESSION['role'] !== 'admin') {
-    // Nếu là user thường, đá về trang chủ của user
-    header("Location: ../index.php"); 
-    exit();
-}
-
-// Tích hợp file kết nối CSDL (Đường dẫn lùi ra 1 cấp để vào thư mục config)[cite: 8]
-require_once '../config/db_connect.php';
-
-// Truy vấn lấy toàn bộ danh sách phòng[cite: 8]
-$sql_rooms = "SELECT * FROM rooms ORDER BY id DESC";
-$result_rooms = $conn->query($sql_rooms);
-?>
 <html lang="vi">
 <head>
     <meta charset="utf-8"/>
@@ -40,17 +16,16 @@ $result_rooms = $conn->query($sql_rooms);
             <span class="font-headline-md text-headline-md text-primary tracking-tight">RoomHub</span>
         </div>
         <nav class="flex-1 px-md flex flex-col gap-xs" data-active-classes="bg-secondary-container text-on-secondary-container font-semibold">
-            <a class="flex items-center px-md py-md rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" href="dashboard.php">
+            <a class="flex items-center px-md py-md rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" href="index.php?controller=admin&action=dashboard">
                 <span class="material-symbols-outlined mr-md">dashboard</span><span class="font-body-md text-body-md">Tổng quan Admin</span>
             </a>
-            <a class="flex items-center px-md py-md rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" href="schedule.php">
+            <a class="flex items-center px-md py-md rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" href="index.php?controller=admin&action=schedule">
                 <span class="material-symbols-outlined mr-md">calendar_month</span><span class="font-body-md text-body-md">Lịch phòng họp</span>
             </a>
-            
-            <a class="flex items-center px-md py-md rounded-xl bg-secondary-container text-on-secondary-container font-semibold transition-all group" href="#">
+            <a class="flex items-center px-md py-md rounded-xl bg-secondary-container text-on-secondary-container font-semibold transition-all group" href="index.php?controller=admin&action=manageRooms">
                 <span class="material-symbols-outlined mr-md">apartment</span><span class="font-body-md text-body-md">Quản lý phòng</span>
             </a>
-            <a class="flex items-center px-md py-md rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" href="approve_bookings.php">
+            <a class="flex items-center px-md py-md rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" href="index.php?controller=admin&action=approveBookings">
                 <span class="material-symbols-outlined mr-md">task_alt</span><span class="font-body-md text-body-md">Phê duyệt</span>
             </a>
         </nav>
@@ -60,8 +35,7 @@ $result_rooms = $conn->query($sql_rooms);
                     <span class="material-symbols-outlined text-on-primary text-[18px]">person</span>
                 </div>
                 <div class="overflow-hidden">
-                    <!-- Đổ tên Admin thực tế từ Session ra giao diện -->
-                    <p class="font-label-md text-label-md text-on-surface truncate"><?php echo htmlspecialchars($_SESSION['full_name']); ?></p>
+                    <p class="font-label-md text-label-md text-on-surface truncate"><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'Admin'); ?></p>
                     <p class="text-[10px] text-on-surface-variant truncate uppercase tracking-widest">Quản trị viên</p>
                 </div>
             </div>
@@ -101,7 +75,7 @@ $result_rooms = $conn->query($sql_rooms);
                             </h1>
                             <p class="font-body-lg text-body-lg text-on-surface-variant">Quản lý cấu hình và trạng thái của tất cả phòng họp trong hệ thống.</p>
                         </div>
-                        <a href="create_room.php" class="bg-primary text-on-primary hover:bg-surface-tint hover:shadow-lg hover:shadow-primary/20 transition-all px-lg py-md rounded-xl font-label-md text-label-md uppercase tracking-wider flex items-center gap-sm shadow-md">
+                        <a href="index.php?controller=admin&action=createRoom" class="bg-primary text-on-primary hover:bg-surface-tint hover:shadow-lg hover:shadow-primary/20 transition-all px-lg py-md rounded-xl font-label-md text-label-md uppercase tracking-wider flex items-center gap-sm shadow-md">
                             <span class="material-symbols-outlined">add</span>
                             Thêm phòng mới
                         </a>
@@ -117,7 +91,7 @@ $result_rooms = $conn->query($sql_rooms);
                             <div class="flex items-center gap-xs text-on-surface-variant">
                                 <span class="font-label-md text-label-md">Đang hiển thị:</span>
                                 <span class="font-body-md text-body-md bg-surface-container-highest px-sm py-xs rounded">
-                                    Tất cả (<?php echo $result_rooms->num_rows; ?>)
+                                    Tất cả (<?php echo count($rooms); ?>)
                                 </span>
                             </div>
                         </div>
@@ -126,29 +100,23 @@ $result_rooms = $conn->query($sql_rooms);
                     <!-- LƯỚI HIỂN THỊ DỮ LIỆU ĐỘNG TỪ DATABASE -->
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-lg pb-xl">
                         <?php
-                        if ($result_rooms->num_rows > 0) {
-                            while ($row = $result_rooms->fetch_assoc()) {
-                                // Xử lý logic trạng thái phòng[cite: 8]
+                        if (!empty($rooms)) {
+                            foreach ($rooms as $row) {
                                 $is_active = ($row['status'] === 'active');
                                 $status_class = $is_active ? 'bg-secondary-fixed text-on-secondary-fixed' : 'bg-surface-variant text-on-surface-variant';
                                 $status_text = $is_active ? 'Đang hoạt động' : 'Đang bảo trì';
-                                
-                                // Nếu bảo trì thì làm mờ giao diện[cite: 8]
                                 $card_opacity = $is_active ? '' : 'opacity-75 grayscale-[0.2]';
-                                
-                                // Tách chuỗi thiết bị thành mảng[cite: 8]
                                 $equipments = explode(',', $row['equipment_details']);
                                 ?>
 
                                 <!-- Khối Card cho 1 Phòng -->
                                 <div class="bg-surface-container-lowest rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 group flex flex-col relative h-[420px] <?php echo $card_opacity; ?>">
                                     
-                                    <!-- Nút thao tác (Hover mới hiện) -->
+                                    <!-- Nút thao tác -->
                                     <div class="absolute top-md right-md z-20 flex gap-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <a href="edit_room.php?id=<?php echo $row['id']; ?>" class="w-8 h-8 rounded-full bg-surface-container-lowest/90 text-on-surface backdrop-blur flex items-center justify-center hover:bg-primary hover:text-on-primary transition-colors shadow-sm" title="Chỉnh sửa">
+                                        <a href="index.php?controller=admin&action=editRoom&id=<?php echo $row['id']; ?>" class="w-8 h-8 rounded-full bg-surface-container-lowest/90 text-on-surface backdrop-blur flex items-center justify-center hover:bg-primary hover:text-on-primary transition-colors shadow-sm" title="Chỉnh sửa">
                                             <span class="material-symbols-outlined text-[18px]">edit</span>
                                         </a>
-                                        <!-- Code phần xóa tính sau -->
                                         <button class="w-8 h-8 rounded-full bg-surface-container-lowest/90 text-on-surface backdrop-blur flex items-center justify-center hover:bg-error hover:text-on-error transition-colors shadow-sm" title="Xóa">
                                             <span class="material-symbols-outlined text-[18px]">delete</span>
                                         </button>
@@ -159,7 +127,7 @@ $result_rooms = $conn->query($sql_rooms);
                                         <div class="absolute top-md left-md z-10 px-sm py-[2px] rounded <?php echo $status_class; ?> font-label-md text-label-md shadow-sm">
                                             <?php echo $status_text; ?>
                                         </div>
-                                        <img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" src="<?php echo htmlspecialchars($row['image_url'] ?? 'https://via.placeholder.com/400x200'); ?>" alt="Room Image" />
+                                        <img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" src="../public/<?php echo htmlspecialchars($row['image_url'] ?? 'https://via.placeholder.com/400x200'); ?>" onerror="this.src='<?php echo htmlspecialchars($row['image_url'] ?? ''); ?>'" alt="Room Image" />
                                         <div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
                                         <div class="absolute bottom-md left-md right-md">
                                             <h3 class="font-headline-md text-headline-md text-on-error mix-blend-difference line-clamp-1">
@@ -210,9 +178,9 @@ $result_rooms = $conn->query($sql_rooms);
                                             <span class="font-code-sm text-code-sm text-on-surface-variant">ID: RM-<?php echo $row['id']; ?></span>
                                             
                                             <?php if ($is_active): ?>
-                                                <a href="toggle_status.php?id=<?php echo $row['id']; ?>" class="text-error hover:bg-error-container hover:text-on-error-container px-sm py-xs rounded transition-colors font-label-md text-label-md">Tạm ngưng</a>
+                                                <a href="index.php?controller=admin&action=toggleStatus&id=<?php echo $row['id']; ?>" class="text-error hover:bg-error-container hover:text-on-error-container px-sm py-xs rounded transition-colors font-label-md text-label-md">Tạm ngưng</a>
                                             <?php else: ?>
-                                                <a href="toggle_status.php?id=<?php echo $row['id']; ?>" class="text-primary hover:bg-primary-container hover:text-on-primary-container px-sm py-xs rounded transition-colors font-label-md text-label-md">Kích hoạt lại</a>
+                                                <a href="index.php?controller=admin&action=toggleStatus&id=<?php echo $row['id']; ?>" class="text-primary hover:bg-primary-container hover:text-on-primary-container px-sm py-xs rounded transition-colors font-label-md text-label-md">Kích hoạt lại</a>
                                             <?php endif; ?>
                                         </div>
                                     </div>

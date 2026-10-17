@@ -1,32 +1,6 @@
 <?php
-// CHỐT CHẶN BẢO MẬT: Bắt buộc khởi tạo session ở dòng đầu tiên
-session_start();
-
-// Kiểm tra đăng nhập
-if (!isset($_SESSION['user_id'])) {
-    header("Location: ../auth/login.php");
-    exit();
-}
-
-// Kiểm tra phân quyền Admin
-if ($_SESSION['role'] !== 'admin') {
-    header("Location: ../index.php");
-    exit();
-}
-require_once '../config/db_connect.php';
-
-// Truy vấn lấy danh sách các yêu cầu ĐANG CHỜ DUYỆT (pending)
-// JOIN 3 bảng: bookings, users, rooms để lấy đầy đủ thông tin hiển thị
-$sql_pending = "
-    SELECT b.*, u.full_name, u.email, r.room_name, r.room_number, r.capacity 
-    FROM bookings b
-    JOIN users u ON b.user_id = u.id
-    JOIN rooms r ON b.room_id = r.id
-    WHERE b.status = 'pending'
-    ORDER BY b.start_time ASC
-";
-$result_pending = $conn->query($sql_pending);
-$pending_count = $result_pending->num_rows;
+// Nhận biến $pending_bookings từ AdminController truyền sang
+$pending_count = isset($pending_bookings) ? count($pending_bookings) : 0;
 ?>
 <html lang="vi">
 <head>
@@ -46,16 +20,16 @@ $pending_count = $result_pending->num_rows;
             <span class="font-headline-md text-headline-md text-primary tracking-tight">RoomHub</span>
         </div>
         <nav class="flex-1 px-md flex flex-col gap-xs" data-active-classes="bg-secondary-container text-on-secondary-container font-semibold">
-            <a class="flex items-center px-md py-md rounded-xl bg-secondary-container text-on-secondary-container font-semibold transition-all group" href="dashboard.php">
+            <a class="flex items-center px-md py-md rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" href="index.php?controller=admin&action=dashboard">
                 <span class="material-symbols-outlined mr-md">dashboard</span><span class="font-body-md text-body-md">Tổng quan Admin</span>
             </a>
-            <a class="flex items-center px-md py-md rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" href="schedule.php">
+            <a class="flex items-center px-md py-md rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" href="index.php?controller=admin&action=schedule">
                 <span class="material-symbols-outlined mr-md">calendar_month</span><span class="font-body-md text-body-md">Lịch phòng họp</span>
             </a>
-            <a class="flex items-center px-md py-md rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" href="manage_rooms.php">
+            <a class="flex items-center px-md py-md rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" href="index.php?controller=admin&action=manageRooms">
                 <span class="material-symbols-outlined mr-md">apartment</span><span class="font-body-md text-body-md">Quản lý phòng</span>
             </a>
-            <a class="flex items-center px-md py-md rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" href="approve_bookings.php">
+            <a class="flex items-center px-md py-md rounded-xl bg-secondary-container text-on-secondary-container font-semibold transition-all group" href="index.php?controller=admin&action=approveBookings">
                 <span class="material-symbols-outlined mr-md">task_alt</span><span class="font-body-md text-body-md">Phê duyệt</span>
             </a>
         </nav>
@@ -65,7 +39,7 @@ $pending_count = $result_pending->num_rows;
                     <span class="material-symbols-outlined text-on-primary text-[18px]">person</span>
                 </div>
                 <div class="overflow-hidden">
-                    <p class="font-label-md text-label-md text-on-surface truncate"><?php echo htmlspecialchars($_SESSION['full_name']); ?></p>
+                    <p class="font-label-md text-label-md text-on-surface truncate"><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'Admin'); ?></p>
                     <p class="text-[10px] text-on-surface-variant truncate uppercase tracking-widest">Quản trị viên</p>
                 </div>
             </div>
@@ -92,9 +66,8 @@ $pending_count = $result_pending->num_rows;
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
                     <?php
                     if ($pending_count > 0) {
-                        while ($row = $result_pending->fetch_assoc()) {
+                        foreach ($pending_bookings as $row) {
                             // Xử lý logic Khẩn cấp (Nếu diễn ra trong vòng 24h tới)
-                            // Xử lý thời gian và phân loại
                             $now = time();
                             $start_ts = strtotime($row['start_time']);
                             $time_diff = $start_ts - $now;
@@ -106,7 +79,7 @@ $pending_count = $result_pending->num_rows;
                             $start_str = date('H:i', $start_ts);
                             $end_str = date('H:i, d/m/Y', strtotime($row['end_time']));
                             
-                            // Style cảnh báo viền đỏ nếu khẩn cấp, viền xám nếu quá hạn
+                            // Style cảnh báo
                             $border_color = 'border-outline-variant';
                             if ($is_urgent) $border_color = 'border-error';
                             if ($is_expired) $border_color = 'border-gray-300 opacity-75';
@@ -135,7 +108,7 @@ $pending_count = $result_pending->num_rows;
                                     <!-- Hiển thị Nhãn Trạng thái -->
                                     <?php if ($is_expired): ?>
                                         <span class="bg-gray-200 text-gray-600 px-2 py-1 rounded text-xs font-bold uppercase flex items-center gap-1">
-                                            <span class="material-symbols-outlined text-[14px]">timer_off</span> Quá hạn duyệt
+                                            <span class="material-symbols-outlined text-[14px]">timer_off</span> Quá hạn
                                         </span>
                                     <?php elseif ($is_urgent): ?>
                                         <span class="bg-error-container text-error px-2 py-1 rounded text-xs font-bold uppercase flex items-center gap-1">
@@ -146,7 +119,6 @@ $pending_count = $result_pending->num_rows;
                                     <?php endif; ?>
                                 </div>
                                 
-                                <!-- (Phần Body thông tin phòng giữ nguyên như cũ...) -->
                                 <!-- Body Card: Info Phòng & Thời gian -->
                                 <div class="bg-surface-container-low rounded-xl p-4 flex flex-col gap-3">
                                     <div class="flex justify-between items-center">
@@ -171,35 +143,32 @@ $pending_count = $result_pending->num_rows;
                                     </div>
                                 </div>
 
-                                <!-- Actions Buttons -->
+                                <!-- Actions Buttons trỏ về Controller -->
                                 <div class="flex gap-4 mt-auto pt-2">
-                                    <a href="process_booking.php?action=reject&id=<?php echo $row['id']; ?>" class="flex-1 py-3 rounded-xl text-center text-sm font-bold uppercase tracking-wider text-error bg-error-container/30 hover:bg-error-container transition-colors" onclick="return confirm('Bạn có chắc chắn muốn TỪ CHỐI yêu cầu này?');">
+                                    <a href="index.php?controller=admin&action=processBooking&action_type=reject&id=<?php echo $row['id']; ?>" class="flex-1 py-3 rounded-xl text-center text-sm font-bold uppercase tracking-wider text-error bg-error-container/30 hover:bg-error-container transition-colors" onclick="return confirm('Bạn có chắc chắn muốn TỪ CHỐI yêu cầu này?');">
                                         <?php echo $is_expired ? 'Xóa yêu cầu' : 'Từ chối'; ?>
                                     </a>
                                     
                                     <?php if (!$is_expired): ?>
-                                    <!-- Chỉ hiển thị nút Duyệt nếu CHƯA quá hạn -->
-                                    <a href="process_booking.php?action=approve&id=<?php echo $row['id']; ?>" class="flex-1 py-3 rounded-xl flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-wider text-white bg-primary hover:bg-blue-800 transition-colors shadow-md" onclick="return confirm('Xác nhận PHÊ DUYỆT yêu cầu này?');">
+                                    <a href="index.php?controller=admin&action=processBooking&action_type=approve&id=<?php echo $row['id']; ?>" class="flex-1 py-3 rounded-xl flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-wider text-white bg-primary hover:bg-blue-800 transition-colors shadow-md" onclick="return confirm('Xác nhận PHÊ DUYỆT yêu cầu này?');">
                                         <span class="material-symbols-outlined text-[18px]">check_circle</span> Phê duyệt
                                     </a>
                                     <?php else: ?>
-                                    <!-- Nút ảo vô hiệu hóa khi lố giờ -->
                                     <button disabled class="flex-1 py-3 rounded-xl flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-wider text-white bg-gray-400 cursor-not-allowed">
                                         <span class="material-symbols-outlined text-[18px]">block</span> Hết hạn
                                     </button>
                                     <?php endif; ?>
                                 </div>
                             </div>
-                            <!-- End Card -->
                             
                             <?php
                         }
                     } else {
-        echo "<div class='col-span-full text-center py-12 bg-white rounded-xl shadow-sm border border-outline-variant'>";
-        echo "<span class='material-symbols-outlined text-4xl text-gray-300 mb-2'>task</span>";
-        echo "<p class='text-lg text-on-surface-variant'>Hiện tại không có yêu cầu nào đang chờ phê duyệt.</p>";
-        echo "</div>";
-    }
+                        echo "<div class='col-span-full text-center py-12 bg-white rounded-xl shadow-sm border border-outline-variant'>";
+                        echo "<span class='material-symbols-outlined text-4xl text-gray-300 mb-2'>task</span>";
+                        echo "<p class='text-lg text-on-surface-variant'>Hiện tại không có yêu cầu nào đang chờ phê duyệt.</p>";
+                        echo "</div>";
+                    }
                     ?>
                 </div>
             </div>

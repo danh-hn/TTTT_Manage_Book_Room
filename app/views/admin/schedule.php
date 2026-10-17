@@ -1,51 +1,3 @@
-<?php
-// CHỐT CHẶN BẢO MẬT: Bắt buộc khởi tạo session ở dòng đầu tiên
-session_start();
-
-// Kiểm tra đăng nhập
-if (!isset($_SESSION['user_id'])) {
-    header("Location: ../auth/login.php");
-    exit();
-}
-
-// Kiểm tra phân quyền Admin
-if ($_SESSION['role'] !== 'admin') {
-    header("Location: ../index.php");
-    exit();
-}
-require_once '../config/db_connect.php';
-
-// 1. Xác định ngày đang xem (Mặc định là hôm nay)
-$current_date = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
-$display_date_str = date('d/m/Y', strtotime($current_date));
-
-// 2. Lấy danh sách các phòng đang hoạt động
-$sql_rooms = "SELECT * FROM rooms WHERE status = 'active'";
-$result_rooms = $conn->query($sql_rooms);
-$rooms = [];
-while ($row = $result_rooms->fetch_assoc()) {
-    $rooms[] = $row;
-}
-
-// 3. Lấy lịch đặt phòng ĐÃ DUYỆT trong ngày hôm nay
-$sql_bookings = "
-    SELECT b.*, u.full_name 
-    FROM bookings b
-    JOIN users u ON b.user_id = u.id
-    WHERE DATE(b.start_time) = ? AND b.status = 'approved'
-";
-$stmt = $conn->prepare($sql_bookings);
-$stmt->bind_param("s", $current_date);
-$stmt->execute();
-$result_bookings = $stmt->get_result();
-
-// Phân nhóm lịch theo ID phòng để dễ vẽ lên lưới
-$bookings_by_room = [];
-while ($b = $result_bookings->fetch_assoc()) {
-    $bookings_by_room[$b['room_id']][] = $b;
-}
-$stmt->close();
-?>
 <html lang="vi">
 <head>
     <meta charset="utf-8"/>
@@ -64,16 +16,16 @@ $stmt->close();
             <span class="font-headline-md text-headline-md text-primary tracking-tight">RoomHub</span>
         </div>
         <nav class="flex-1 px-md flex flex-col gap-xs" data-active-classes="bg-secondary-container text-on-secondary-container font-semibold">
-            <a class="flex items-center px-md py-md rounded-xl bg-secondary-container text-on-secondary-container font-semibold transition-all group" href="dashboard.php">
+            <a class="flex items-center px-md py-md rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" href="index.php?controller=admin&action=dashboard">
                 <span class="material-symbols-outlined mr-md">dashboard</span><span class="font-body-md text-body-md">Tổng quan Admin</span>
             </a>
-            <a class="flex items-center px-md py-md rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" href="schedule.php">
+            <a class="flex items-center px-md py-md rounded-xl bg-secondary-container text-on-secondary-container font-semibold transition-all group" href="index.php?controller=admin&action=schedule">
                 <span class="material-symbols-outlined mr-md">calendar_month</span><span class="font-body-md text-body-md">Lịch phòng họp</span>
             </a>
-            <a class="flex items-center px-md py-md rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" href="manage_rooms.php">
+            <a class="flex items-center px-md py-md rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" href="index.php?controller=admin&action=manageRooms">
                 <span class="material-symbols-outlined mr-md">apartment</span><span class="font-body-md text-body-md">Quản lý phòng</span>
             </a>
-            <a class="flex items-center px-md py-md rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" href="approve_bookings.php">
+            <a class="flex items-center px-md py-md rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" href="index.php?controller=admin&action=approveBookings">
                 <span class="material-symbols-outlined mr-md">task_alt</span><span class="font-body-md text-body-md">Phê duyệt</span>
             </a>
         </nav>
@@ -93,7 +45,7 @@ $stmt->close();
     <div class="pl-72">
         <header class="h-16 bg-white/80 backdrop-blur-md border-b border-outline-variant flex items-center justify-between px-10 sticky top-0 z-40">
             <h1 class="text-xl font-bold">Chi tiết lịch đặt phòng</h1>
-            <a href="../index.php" class="bg-primary text-white px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-2 hover:bg-blue-800">
+            <a href="index.php?controller=admin&action=createBooking" class="bg-primary text-white px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-2 hover:bg-blue-800 shadow-md">
                 <span class="material-symbols-outlined text-[18px]">add</span> Đặt phòng nhanh
             </a>
         </header>
@@ -106,19 +58,21 @@ $stmt->close();
                     <h2 class="font-bold text-on-surface">Danh mục phòng</h2>
                 </div>
                 <div class="overflow-y-auto flex-1 p-2 flex flex-col gap-2">
-                    <?php foreach ($rooms as $room): ?>
-                        <div class="flex items-start gap-3 p-3 rounded-xl hover:bg-surface-container transition-colors text-left group">
-                            <div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center shrink-0">
-                                <span class="material-symbols-outlined text-on-surface-variant">meeting_room</span>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <div class="font-bold text-sm text-on-surface truncate"><?php echo htmlspecialchars($room['room_name']); ?></div>
-                                <div class="text-xs text-on-surface-variant flex items-center gap-1 mt-1">
-                                    <span class="material-symbols-outlined text-[14px]">group</span> <?php echo $room['capacity']; ?> người
+                    <?php if (!empty($rooms)): ?>
+                        <?php foreach ($rooms as $room): ?>
+                            <div class="flex items-start gap-3 p-3 rounded-xl hover:bg-surface-container transition-colors text-left group">
+                                <div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center shrink-0">
+                                    <span class="material-symbols-outlined text-on-surface-variant">meeting_room</span>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-bold text-sm text-on-surface truncate"><?php echo htmlspecialchars($room['room_name']); ?></div>
+                                    <div class="text-xs text-on-surface-variant flex items-center gap-1 mt-1">
+                                        <span class="material-symbols-outlined text-[14px]">group</span> <?php echo $room['capacity']; ?> người
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    <?php endforeach; ?>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </div>
             </aside>
 
@@ -127,12 +81,12 @@ $stmt->close();
                 <!-- Điều hướng ngày -->
                 <div class="p-4 flex items-center justify-between border-b border-outline-variant bg-surface-container-lowest">
                     <div class="flex items-center gap-4">
-                        <h2 class="text-xl font-bold text-on-surface">Ngày <?php echo $display_date_str; ?></h2>
+                        <h2 class="text-xl font-bold text-on-surface">Ngày <?php echo htmlspecialchars($display_date_str); ?></h2>
                         <div class="flex gap-1">
-                            <a href="?date=<?php echo date('Y-m-d', strtotime($current_date . ' -1 day')); ?>" class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center hover:bg-gray-200">
+                            <a href="index.php?controller=admin&action=schedule&date=<?php echo date('Y-m-d', strtotime($current_date . ' -1 day')); ?>" class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center hover:bg-gray-200">
                                 <span class="material-symbols-outlined">chevron_left</span>
                             </a>
-                            <a href="?date=<?php echo date('Y-m-d', strtotime($current_date . ' +1 day')); ?>" class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center hover:bg-gray-200">
+                            <a href="index.php?controller=admin&action=schedule&date=<?php echo date('Y-m-d', strtotime($current_date . ' +1 day')); ?>" class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center hover:bg-gray-200">
                                 <span class="material-symbols-outlined">chevron_right</span>
                             </a>
                         </div>
@@ -153,53 +107,50 @@ $stmt->close();
                         </div>
 
                         <!-- Render các dòng Timeline tương ứng với từng phòng -->
-                        <?php foreach ($rooms as $room): ?>
-                            <div class="relative h-24 bg-surface-container-low rounded-xl mb-4 border border-outline-variant/30 flex items-center group">
-                                
-                                <!-- Nhãn tên phòng mờ ở góc -->
-                                <span class="absolute left-4 font-bold text-gray-300 pointer-events-none"><?php echo htmlspecialchars($room['room_number'] ?? $room['room_name']); ?></span>
+                        <?php if (!empty($rooms)): ?>
+                            <?php foreach ($rooms as $room): ?>
+                                <div class="relative h-24 bg-surface-container-low rounded-xl mb-4 border border-outline-variant/30 flex items-center group">
+                                    
+                                    <!-- Nhãn tên phòng mờ ở góc -->
+                                    <span class="absolute left-4 font-bold text-gray-300 pointer-events-none"><?php echo htmlspecialchars($room['room_number'] ?? $room['room_name']); ?></span>
 
-                                <!-- Vẽ các cuộc họp của phòng này -->
-                                <?php 
-                                if (isset($bookings_by_room[$room['id']])) {
-                                    foreach ($bookings_by_room[$room['id']] as $booking) {
-                                        // Thuật toán tính toán tọa độ
-                                        $start_ts = strtotime($booking['start_time']);
-                                        $end_ts = strtotime($booking['end_time']);
-                                        
-                                        // Quy đổi giờ ra phút trong ngày
-                                        $start_minutes = (int)date('H', $start_ts) * 60 + (int)date('i', $start_ts);
-                                        $end_minutes = (int)date('H', $end_ts) * 60 + (int)date('i', $end_ts);
-                                        
-                                        // Mốc thời gian bắt đầu vẽ là 06:00 sáng (360 phút)
-                                        $grid_start_minutes = 360; 
-                                        $total_grid_minutes = 18 * 60; // Vẽ 18 tiếng (từ 06:00 đến 24:00 = 1080 phút)
-                                        
-                                        // Ép giới hạn để khối không tràn ra ngoài lưới
-                                        $safe_start = max($start_minutes, $grid_start_minutes);
-                                        $safe_end = min($end_minutes, $grid_start_minutes + $total_grid_minutes);
-                                        $duration = $safe_end - $safe_start;
-                                        
-                                        if ($duration > 0) {
-                                            $left_percent = (($safe_start - $grid_start_minutes) / $total_grid_minutes) * 100;
-                                            $width_percent = ($duration / $total_grid_minutes) * 100;
-                                            ?>
+                                    <!-- Vẽ các cuộc họp của phòng này -->
+                                    <?php 
+                                    if (isset($bookings_by_room[$room['id']])) {
+                                        foreach ($bookings_by_room[$room['id']] as $booking) {
+                                            $start_ts = strtotime($booking['start_time']);
+                                            $end_ts = strtotime($booking['end_time']);
                                             
-                                            <!-- Khối Lịch họp động -->
-                                            <div class="absolute top-2 bottom-2 bg-blue-100/80 hover:bg-blue-200 border-l-4 border-primary rounded shadow-sm p-2 cursor-pointer transition-colors overflow-hidden"
-                                                 style="left: <?php echo $left_percent; ?>%; width: <?php echo $width_percent; ?>%;"
-                                                 title="<?php echo htmlspecialchars($booking['title']); ?> (<?php echo date('H:i', $start_ts) . ' - ' . date('H:i', $end_ts); ?>)">
-                                                <div class="text-xs font-bold text-primary truncate"><?php echo htmlspecialchars($booking['title']); ?></div>
-                                                <div class="text-[10px] text-blue-800 truncate"><?php echo htmlspecialchars($booking['full_name']); ?></div>
-                                            </div>
+                                            $start_minutes = (int)date('H', $start_ts) * 60 + (int)date('i', $start_ts);
+                                            $end_minutes = (int)date('H', $end_ts) * 60 + (int)date('i', $end_ts);
+                                            
+                                            $grid_start_minutes = 360; 
+                                            $total_grid_minutes = 18 * 60; 
+                                            
+                                            $safe_start = max($start_minutes, $grid_start_minutes);
+                                            $safe_end = min($end_minutes, $grid_start_minutes + $total_grid_minutes);
+                                            $duration = $safe_end - $safe_start;
+                                            
+                                            if ($duration > 0) {
+                                                $left_percent = (($safe_start - $grid_start_minutes) / $total_grid_minutes) * 100;
+                                                $width_percent = ($duration / $total_grid_minutes) * 100;
+                                                ?>
+                                                
+                                                <div class="absolute top-2 bottom-2 bg-blue-100/80 hover:bg-blue-200 border-l-4 border-primary rounded shadow-sm p-2 cursor-pointer transition-colors overflow-hidden"
+                                                     style="left: <?php echo $left_percent; ?>%; width: <?php echo $width_percent; ?>%;"
+                                                     title="<?php echo htmlspecialchars($booking['title']); ?> (<?php echo date('H:i', $start_ts) . ' - ' . date('H:i', $end_ts); ?>)">
+                                                    <div class="text-xs font-bold text-primary truncate"><?php echo htmlspecialchars($booking['title']); ?></div>
+                                                    <div class="text-[10px] text-blue-800 truncate"><?php echo htmlspecialchars($booking['full_name']); ?></div>
+                                                </div>
 
-                                            <?php
+                                                <?php
+                                            }
                                         }
                                     }
-                                }
-                                ?>
-                            </div>
-                        <?php endforeach; ?>
+                                    ?>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
 
                     </div>
                 </div>

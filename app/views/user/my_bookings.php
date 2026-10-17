@@ -1,28 +1,3 @@
-<?php
-session_start();
-
-if (!isset($_SESSION['user_id'])) {
-    header("Location: auth/login.php");
-    exit();
-}
-
-require_once 'config/db_connect.php';
-
-$user_id = $_SESSION['user_id'];
-
-// Truy vấn JOIN để lấy thông tin phòng kèm theo lịch đặt của User hiện tại
-$sql_history = "
-    SELECT b.*, r.room_name, r.room_number, r.image_url 
-    FROM bookings b
-    JOIN rooms r ON b.room_id = r.id
-    WHERE b.user_id = ?
-    ORDER BY b.start_time DESC
-";
-$stmt = $conn->prepare($sql_history);
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$result_history = $stmt->get_result();
-?>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -45,15 +20,15 @@ $result_history = $stmt->get_result();
             <span class="text-xl font-bold text-primary tracking-tight">RoomHub</span>
         </div>
         <nav class="flex-1 px-4 flex flex-col gap-1">
-            <a class="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high transition-all" href="index.php">
+            <a class="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high transition-all" href="index.php?controller=user&action=index">
                 <span class="material-symbols-outlined mr-4">home</span><span>Trang chủ Đặt phòng</span>
             </a>
-            <a class="flex items-center px-4 py-3 rounded-xl bg-blue-100 text-blue-900 font-semibold transition-all" href="my_bookings.php">
+            <a class="flex items-center px-4 py-3 rounded-xl bg-blue-100 text-blue-900 font-semibold transition-all" href="index.php?controller=user&action=myBookings">
                 <span class="material-symbols-outlined mr-4">history</span><span>Lịch sử của tôi</span>
             </a>
-            <?php if($_SESSION['role'] === 'admin'): ?>
+            <?php if(isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
             <div class="my-2 border-t border-outline-variant mx-4 opacity-50"></div>
-            <a class="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high transition-all" href="admin/dashboard.php">
+            <a class="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high transition-all" href="index.php?controller=admin&action=dashboard">
                 <span class="material-symbols-outlined mr-4">admin_panel_settings</span><span>Quản trị viên</span>
             </a>
             <?php endif; ?>
@@ -61,13 +36,13 @@ $result_history = $stmt->get_result();
         <div class="px-4 pt-6 border-t border-outline-variant">
             <div class="flex items-center gap-3 px-4 py-2 bg-surface-container-highest rounded-xl">
                 <div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold">
-                    <?php echo strtoupper(substr($_SESSION['full_name'], 0, 1)); ?>
+                    <?php echo strtoupper(substr($_SESSION['full_name'] ?? 'U', 0, 1)); ?>
                 </div>
                 <div class="overflow-hidden flex-1">
-                    <p class="font-bold text-sm text-on-surface truncate"><?php echo htmlspecialchars($_SESSION['full_name']); ?></p>
+                    <p class="font-bold text-sm text-on-surface truncate"><?php echo htmlspecialchars($_SESSION['full_name'] ?? ''); ?></p>
                     <p class="text-xs text-on-surface-variant truncate uppercase tracking-widest">Nhân viên</p>
                 </div>
-                <a href="auth/logout.php" class="text-error hover:bg-error-container p-2 rounded-full transition-colors" title="Đăng xuất">
+                <a href="index.php?controller=auth&action=logout" class="text-error hover:bg-error-container p-2 rounded-full transition-colors" title="Đăng xuất">
                     <span class="material-symbols-outlined text-[20px]">logout</span>
                 </a>
             </div>
@@ -95,42 +70,31 @@ $result_history = $stmt->get_result();
                         </thead>
                         <tbody class="text-sm">
                             <?php
-                            if ($result_history->num_rows > 0) {
-                                while ($row = $result_history->fetch_assoc()) {
+                            if (!empty($history)) {
+                                foreach ($history as $row) {
                                     $start_time = date('H:i, d/m/Y', strtotime($row['start_time']));
                                     $end_time = date('H:i, d/m/Y', strtotime($row['end_time']));
                                     
-                                    // Xử lý UI cho từng loại trạng thái
-                                    // Lấy thời gian thực (Giờ máy chủ)
                                     $now = time();
                                     $start_ts = strtotime($row['start_time']);
                                     $end_ts = strtotime($row['end_time']);
                                     $db_status = $row['status'];
                                     
                                     $status_html = '';
-                                    
-                                    // TRƯỜNG HỢP 1: Bị từ chối / Hủy
                                     if ($db_status === 'cancelled') {
                                         $status_html = '<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-red-100 text-red-800 font-bold"><span class="material-symbols-outlined text-[16px]">cancel</span> Bị từ chối</span>';
-                                    } 
-                                    // TRƯỜNG HỢP 2: Chờ duyệt (Tính thêm Quá hạn)
-                                    elseif ($db_status === 'pending') {
+                                    } elseif ($db_status === 'pending') {
                                         if ($start_ts < $now) {
                                             $status_html = '<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gray-200 text-gray-600 font-bold"><span class="material-symbols-outlined text-[16px]">timer_off</span> Quá thời hạn</span>';
                                         } else {
                                             $status_html = '<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 font-bold"><span class="material-symbols-outlined text-[16px]">pending</span> Chờ duyệt</span>';
                                         }
-                                    } 
-                                    // TRƯỜNG HỢP 3: Đã duyệt (Phân rã thành 3 mốc thời gian)
-                                    elseif ($db_status === 'approved') {
+                                    } elseif ($db_status === 'approved') {
                                         if ($now < $start_ts) {
-                                            // Chưa đến giờ
                                             $status_html = '<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-green-100 text-green-800 font-bold"><span class="material-symbols-outlined text-[16px]">event_available</span> Đã duyệt</span>';
                                         } elseif ($now >= $start_ts && $now <= $end_ts) {
-                                            // Đang trong thời gian họp
                                             $status_html = '<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-100 text-blue-800 font-bold animate-pulse"><span class="material-symbols-outlined text-[16px]">play_circle</span> Đang diễn ra</span>';
                                         } else {
-                                            // Đã qua giờ kết thúc
                                             $status_html = '<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-surface-variant text-on-surface-variant font-bold"><span class="material-symbols-outlined text-[16px]">task_alt</span> Đã hoàn thành</span>';
                                         }
                                     }
@@ -166,4 +130,3 @@ $result_history = $stmt->get_result();
     </div>
 </body>
 </html>
-<?php $stmt->close(); ?>
