@@ -8,15 +8,17 @@ $current_start =$start_time ?? $_POST['start_time'] ?? $_GET['start'] ?? '';
 $current_end =$end_time ?? $_POST['end_time'] ?? $_GET['end'] ?? '';
 $current_holding_id =$holding_id ?? $_POST['holding_id'] ?? $_GET['holding_id'] ?? '0';
 
-// Dùng SESSION của Server để khóa cứng thời gian (Chống F5 reset)
-$session_key = 'expiry_time_holding_' .$current_holding_id;
-if (!isset($_SESSION[$session_key])) {
-    $_SESSION[$session_key] = time() + 300; // 300 giây = 5 phút
-}
-
-// Tính số giây còn lại thực tế từ Server
-$time_left = $_SESSION[$session_key] - time();
-if ($time_left < 0) {$time_left = 0;
+// Thời gian còn lại lấy từ DB (Controller truyền $seconds_left = getHoldingSecondsLeft()).
+// Khớp chính xác với expires_at của đơn giữ chỗ, F5 không reset được.
+if (isset($seconds_left)) {
+    $time_left = max(0, (int)$seconds_left);
+} else {
+    // Dự phòng nếu Controller chưa truyền (kém chính xác hơn)
+    $session_key = 'expiry_time_holding_' . $current_holding_id;
+    if (!isset($_SESSION[$session_key])) {
+        $_SESSION[$session_key] = time() + 300;
+    }
+    $time_left = max(0, $_SESSION[$session_key] - time());
 }
 ?>
 <!DOCTYPE html>
@@ -85,13 +87,6 @@ if ($time_left < 0) {$time_left = 0;
                         </div>
                     </div>
                 </div>
-
-                <div class="flex flex-col gap-1">
-                    <label class="text-sm font-semibold text-gray-700">Mời người tham dự (Email nội bộ)</label>
-                    <input type="text" name="attendees" placeholder="Nhập email cách nhau bởi dấu phẩy..." 
-                           class="px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl focus:outline-none focus:border-primary text-sm">
-                </div>
-
                 <div class="grid grid-cols-3 gap-4">
                     <div class="flex flex-col gap-1">
                         <label class="text-sm font-semibold text-gray-700">Số người tham gia *</label>
@@ -159,7 +154,7 @@ if ($time_left < 0) {$time_left = 0;
                             <button type="submit" class="w-full py-3.5 bg-primary text-white font-bold rounded-xl hover:bg-blue-800 transition-colors shadow-md flex items-center justify-center gap-2">
                                 <span class="material-symbols-outlined text-[20px]">task_alt</span> Xác nhận & Hoàn tất đặt phòng
                             </button>
-                            <a href="index.php?controller=user&action=index" class="w-full py-2.5 bg-surface-container hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-colors text-center text-xs">
+                            <a href="index.php?controller=user&action=cancelHolding&holding_id=<?php echo (int)$current_holding_id; ?>" class="w-full py-2.5 bg-surface-container hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-colors text-center text-xs">
                                 Hủy bỏ (Quay lại chọn phòng)
                             </a>
                         </div>

@@ -35,12 +35,12 @@ class AdminController extends Controller {
     }
 
     // 2. Quản lý danh sách phòng
-    public function manageRooms() {
-        $roomModel = $this->model('RoomModel');
-        $rooms = $roomModel->getAllRooms();
+    // public function manageRooms() {
+    //     $roomModel = $this->model('RoomModel');
+    //     $rooms = $roomModel->getAllRooms();
 
-        $this->view('admin/manage_rooms', ['rooms' => $rooms]);
-    }
+    //     $this->view('admin/manage_rooms', ['rooms' => $rooms]);
+    // }
 
     // 3. Thêm phòng mới
     public function createRoom() {
@@ -53,50 +53,60 @@ class AdminController extends Controller {
             $location = trim($_POST['location'] ?? '');
             $equipment_details = trim($_POST['equipment_details'] ?? '');
             
-            $image_url = 'https://via.placeholder.com/400x200?text=No+Image';
-
-            // Xử lý upload file ảnh từ thiết bị
-            if (isset($_FILES['room_image']) && $_FILES['room_image']['error'] === UPLOAD_ERR_OK) {
-                $file_tmp = $_FILES['room_image']['tmp_name'];
-                $file_ext = strtolower(pathinfo($_FILES['room_image']['name'], PATHINFO_EXTENSION));
-                $allowed = ['jpg', 'jpeg', 'png', 'webp'];
-                
-                if (in_array($file_ext, $allowed)) {
-                    $new_name = 'room_' . uniqid() . '.' . $file_ext;
-                    $upload_dir = '../public/uploads/';
-                    if (!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
-                    if (move_uploaded_file($file_tmp, $upload_dir . $new_name)) {
-                        $image_url = 'uploads/' . $new_name;
-                    }
-                }
-            }
-
-            // Ràng buộc dữ liệu
+            // 1. Ràng buộc dữ liệu bắt buộc ở Backend
             if (empty($room_name) || empty($room_number) || empty($location)) {
-                $error = "Vui lòng nhập đầy đủ Tên phòng, Mã phòng và Vị trí.";
-            } elseif (!is_numeric($room_number)) {
-                $error = "Mã phòng bắt buộc phải là dạng số.";
+                $error = "Vui lòng nhập đầy đủ Tên phòng, Mã phòng và Tầng (Vị trí).";
+            } elseif (!is_numeric($room_number) || $room_number <= 0) {
+                $error = "Mã phòng bắt buộc phải là số dương.";
             } elseif ($capacity <= 0 || $area <= 0) {
                 $error = "Sức chứa và Diện tích phải lớn hơn 0.";
             } else {
                 $roomModel = $this->model('RoomModel');
-                $data = [
-                    'room_name' => $room_name,
-                    'room_number' => $room_number,
-                    'capacity' => $capacity,
-                    'area' => $area,
-                    'location' => $location,
-                    'equipment_details' => $equipment_details,
-                    'image_url' => $image_url
-                ];
-
-                if ($roomModel->insertRoom($data)) {
-                    header("Location: index.php?controller=admin&action=manageRooms&msg=success");
-                    exit();
+                
+                // 2. KIỂM TRA TRÙNG LẶP (MÃ PHÒNG & TÊN PHÒNG)
+                if ($roomModel->isRoomNumberOrNameExists($room_number, $room_name)) {
+                    $error = "Lỗi: Mã phòng ($room_number) hoặc Tên phòng ($room_name) đã tồn tại. Vui lòng chọn tên/mã khác!";
                 } else {
-                    $error = "Lỗi hệ thống: Không thể lưu dữ liệu.";
+                    // Nếu không trùng, tiến hành xử lý ảnh và lưu DB
+                    $image_url = 'https://via.placeholder.com/400x200?text=No+Image';
+                    if (isset($_FILES['room_image']) && $_FILES['room_image']['error'] === UPLOAD_ERR_OK) {
+                        $file_tmp = $_FILES['room_image']['tmp_name'];
+                        $file_ext = strtolower(pathinfo($_FILES['room_image']['name'], PATHINFO_EXTENSION));
+                        $allowed = ['jpg', 'jpeg', 'png', 'webp'];
+                        
+                        if (in_array($file_ext, $allowed)) {
+                            $new_name = 'room_' . uniqid() . '.' . $file_ext;
+                            $upload_dir = '../public/uploads/';
+                            if (!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
+                            if (move_uploaded_file($file_tmp, $upload_dir . $new_name)) {
+                                $image_url = 'uploads/' . $new_name;
+                            }
+                        }
+                    }
+
+                    $data = [
+                        'room_name' => $room_name,
+                        'room_number' => $room_number,
+                        'capacity' => $capacity,
+                        'area' => $area,
+                        'location' => $location,
+                        'equipment_details' => $equipment_details,
+                        'image_url' => $image_url
+                    ];
+
+                    if ($roomModel->insertRoom($data)) {
+                        header("Location: index.php?controller=admin&action=manageRooms&msg=success");
+                        exit();
+                    } else {
+                        $error = "Lỗi hệ thống: Không thể lưu dữ liệu.";
+                    }
                 }
             }
+        }
+
+        // Bắt lỗi từ query string (nếu có JS redirect)
+        if (isset($_GET['error']) && $_GET['error'] === 'duplicate_room') {
+            $error = "Lỗi: Mã phòng hoặc Tên phòng đã tồn tại. Vui lòng chọn tên/mã khác!";
         }
 
         $this->view('admin/create_room', ['error' => $error]);
@@ -105,7 +115,8 @@ class AdminController extends Controller {
     // 4. Chỉnh sửa thông tin phòng
     public function editRoom() {
         $roomModel = $this->model('RoomModel');
-        $id = $_GET['id'] ?? 0;
+        // Ưu tiên lấy ID từ POST khi submit form, nếu không có mới lấy từ GET
+        $id = isset($_POST['id']) ? (int)$_POST['id'] : (int)($_GET['id'] ?? 0);
         $error = '';
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -122,45 +133,53 @@ class AdminController extends Controller {
             }
             $equipment_details = implode(', ', $selected_equipments);
 
-            $old_room = $roomModel->getRoomById($id);
-            $image_url = $old_room['image_url'] ?? '';
-
-            if (isset($_FILES['room_image']) && $_FILES['room_image']['error'] === UPLOAD_ERR_OK) {
-                $file_tmp = $_FILES['room_image']['tmp_name'];
-                $file_ext = strtolower(pathinfo($_FILES['room_image']['name'], PATHINFO_EXTENSION));
-                $allowed = ['jpg', 'jpeg', 'png', 'webp'];
-                
-                if (in_array($file_ext, $allowed)) {
-                    $new_name = 'room_' . uniqid() . '.' . $file_ext;
-                    $upload_dir = '../public/uploads/';
-                    if (!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
-                    if (move_uploaded_file($file_tmp, $upload_dir . $new_name)) {
-                        $image_url = 'uploads/' . $new_name;
-                    }
-                }
-            }
-
+            // 1. Ràng buộc dữ liệu bắt buộc ở Backend
             if (empty($room_name) || empty($room_number) || empty($location)) {
-                $error = "Vui lòng nhập đầy đủ Tên phòng, Mã phòng và Vị trí.";
-            } elseif (!is_numeric($room_number)) {
-                $error = "Mã phòng bắt buộc phải là dạng số.";
+                $error = "Vui lòng nhập đầy đủ Tên phòng, Mã phòng và Vị trí (Tầng).";
+            } elseif (!is_numeric($room_number) || $room_number <= 0) {
+                $error = "Mã phòng bắt buộc phải là số dương.";
             } elseif ($capacity <= 0 || $area <= 0) {
                 $error = "Sức chứa và Diện tích phải lớn hơn 0.";
             } else {
-                $data = [
-                    'room_name' => $room_name,
-                    'room_number' => $room_number,
-                    'capacity' => $capacity,
-                    'area' => $area,
-                    'location' => $location,
-                    'equipment_details' => $equipment_details,
-                    'image_url' => $image_url
-                ];
-                if ($roomModel->updateRoom($id, $data)) {
-                    header("Location: index.php?controller=admin&action=manageRooms&msg=updated");
-                    exit();
+                // 2. KIỂM TRA TRÙNG LẶP KHI CHỈNH SỬA (Bỏ qua ID của chính phòng này)
+                if ($roomModel->isRoomNumberOrNameExists($room_number, $room_name, $id)) {
+                    $error = "Lỗi: Mã phòng ($room_number) hoặc Tên phòng ($room_name) đã bị trùng với một phòng khác!";
                 } else {
-                    $error = "Lỗi hệ thống: Không thể cập nhật dữ liệu.";
+                    // Nếu không trùng, tiến hành lưu
+                    $old_room = $roomModel->getRoomById($id);
+                    $image_url = $old_room['image_url'] ?? '';
+
+                    if (isset($_FILES['room_image']) && $_FILES['room_image']['error'] === UPLOAD_ERR_OK) {
+                        $file_tmp = $_FILES['room_image']['tmp_name'];
+                        $file_ext = strtolower(pathinfo($_FILES['room_image']['name'], PATHINFO_EXTENSION));
+                        $allowed = ['jpg', 'jpeg', 'png', 'webp'];
+                        
+                        if (in_array($file_ext, $allowed)) {
+                            $new_name = 'room_' . uniqid() . '.' . $file_ext;
+                            $upload_dir = '../public/uploads/';
+                            if (!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
+                            if (move_uploaded_file($file_tmp, $upload_dir . $new_name)) {
+                                $image_url = 'uploads/' . $new_name;
+                            }
+                        }
+                    }
+
+                    $data = [
+                        'room_name' => $room_name,
+                        'room_number' => $room_number,
+                        'capacity' => $capacity,
+                        'area' => $area,
+                        'location' => $location,
+                        'equipment_details' => $equipment_details,
+                        'image_url' => $image_url
+                    ];
+                    
+                    if ($roomModel->updateRoom($id, $data)) {
+                        header("Location: index.php?controller=admin&action=manageRooms&msg=updated");
+                        exit();
+                    } else {
+                        $error = "Lỗi hệ thống: Không thể cập nhật dữ liệu.";
+                    }
                 }
             }
         }
@@ -214,9 +233,17 @@ class AdminController extends Controller {
     // 7. Trang phê duyệt yêu cầu đặt phòng
     public function approveBookings() {
         $bookingModel = $this->model('BookingModel');
+        
+        // Lấy danh sách đang chờ duyệt
         $pending_bookings = $bookingModel->getPendingBookings();
+        
+        // Lấy thêm danh sách đã duyệt gần đây
+        $approved_bookings = $bookingModel->getRecentApprovedBookings(20);
 
-        $this->view('admin/approve_bookings', ['pending_bookings' => $pending_bookings]);
+        $this->view('admin/approve_bookings', [
+            'pending_bookings' => $pending_bookings,
+            'approved_bookings' => $approved_bookings
+        ]);
     }
 
     // 8. Xử lý duyệt hoặc từ chối đơn
@@ -291,6 +318,37 @@ class AdminController extends Controller {
             'error' => $error,
             'success' => $success
         ]);
+    }
+
+    // 1. Hàm hiển thị danh sách phòng có bộ lọc
+    public function manageRooms() {
+        $floor = $_GET['floor'] ?? '';
+        $status = $_GET['status'] ?? '';
+
+        $roomModel = $this->model('RoomModel');
+        // Gọi hàm lọc thay vì lấy tất cả
+        $rooms = $roomModel->getFilteredRooms($floor, $status);
+
+        $this->view('admin/manage_rooms', [
+            'rooms' => $rooms
+        ]);
+    }
+
+    public function deleteRoom() {
+        if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['id'])) {
+            $id = (int)$_GET['id'];
+            $roomModel = $this->model('RoomModel');
+            
+            // Thực hiện xóa phòng
+            $result = $roomModel->deleteRoomById($id);
+            
+            if ($result) {
+                header("Location: index.php?controller=admin&action=manageRooms&msg=deleted");
+            } else {
+                header("Location: index.php?controller=admin&action=manageRooms&error=delete_failed");
+            }
+            exit();
+        }
     }
 }
 ?>

@@ -67,5 +67,136 @@ class RoomModel {
         $stmt->close();
         return false;
     }
+
+    // Lọc danh sách phòng theo tầng và trạng thái
+    public function getFilteredRooms($floor = '', $status = '') {
+        $sql = "SELECT * FROM rooms WHERE 1=1";
+        $params = [];
+        $types = "";
+
+        // Lọc chính xác theo cột location
+        if ($floor !== '') {
+            $sql .= " AND location = ?";
+            $params[] = $floor;
+            $types .= "s";
+        }
+
+        if ($status !== '') {
+            $sql .= " AND status = ?";
+            $params[] = $status;
+            $types .= "s";
+        }
+
+        $sql .= " ORDER BY room_number ASC";
+        
+        $stmt = $this->conn->prepare($sql);
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+        
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        $rooms = [];
+        if ($result->num_rows > 0) {
+            while ($row = $result->fetch_assoc()) {
+                $rooms[] = $row;
+            }
+        }
+        $stmt->close();
+        
+        return $rooms;
+    }
+
+    // Kiểm tra số phòng đã tồn tại chưa (Tuyệt đối không được trùng)
+    public function isRoomNumberExists($room_number, $exclude_id = null) {
+        $sql = "SELECT id FROM rooms WHERE room_number = ?";
+        $params = [$room_number];
+        $types = "s";
+
+        if ($exclude_id !== null) {
+            $sql .= " AND id != ?";
+            $params[] = $exclude_id;
+            $types .= "i";
+        }
+
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $stmt->store_result();
+        
+        $exists = $stmt->num_rows > 0;
+        $stmt->close();
+        
+        return $exists;
+    }
+
+    /**
+     * Kiểm tra Mã phòng hoặc Tên phòng đã tồn tại chưa
+     */
+    public function isRoomNumberOrNameExists($room_number, $room_name, $exclude_id = null) {
+        // Tìm xem có phòng nào trùng Tên HOẶC trùng Mã
+        $sql = "SELECT id FROM rooms WHERE (room_number = ? OR room_name = ?)";
+        $params = [$room_number, $room_name];
+        $types = "ss";
+
+        // Nếu đang Sửa phòng, bỏ qua ID của chính phòng đó
+        if ($exclude_id !== null) {
+            $sql .= " AND id != ?";
+            $params[] = $exclude_id;
+            $types .= "i";
+        }
+
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $stmt->store_result();
+        
+        $exists = $stmt->num_rows > 0;
+        $stmt->close();
+        
+        return $exists;
+    }
+
+    /**
+     * Xóa phòng họp và các lịch đặt liên quan
+     */
+    public function deleteRoomById($id) {
+        // Bước 1: Xóa các lịch đặt phòng liên quan trước để tránh lỗi khóa ngoại
+        $sqlBookings = "DELETE FROM bookings WHERE room_id = ?";
+        $stmtBookings = $this->conn->prepare($sqlBookings);
+        if ($stmtBookings) {
+            $stmtBookings->bind_param("i", $id);
+            $stmtBookings->execute();
+            $stmtBookings->close();
+        }
+
+        // Bước 2: Xóa phòng
+        $sql = "DELETE FROM rooms WHERE id = ?";
+        $stmt = $this->conn->prepare($sql);
+        if (!$stmt) return false;
+        
+        $stmt->bind_param("i", $id);
+        $result = $stmt->execute();
+        $stmt->close();
+        
+        return $result;
+    }
+
+    /**
+     * Cập nhật trạng thái bảo trì/hoạt động của phòng
+     */
+    public function updateRoomStatus($id, $status) {
+        $sql = "UPDATE rooms SET status = ? WHERE id = ?";
+        $stmt = $this->conn->prepare($sql);
+        if (!$stmt) return false;
+        
+        $stmt->bind_param("si", $status, $id);
+        $result = $stmt->execute();
+        $stmt->close();
+        
+        return $result;
+    }
+
 }
 ?>

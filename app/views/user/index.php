@@ -1,40 +1,60 @@
+<?php
+date_default_timezone_set('Asia/Ho_Chi_Minh');
+?>
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <script id="tailwind-config">
-        tailwind.config={theme:{extend:{colors:{"primary":"#00288e","surface":"#fbf8ff","surface-container":"#eeedf7","surface-container-low":"#f4f2fc","surface-container-high":"#e8e7f1","on-surface":"#1a1b22","on-surface-variant":"#444653","outline-variant":"#c4c5d5","error":"#ba1a1a","error-container":"#ffdad6","on-error-container":"#93000a","on-primary":"#ffffff"}}}}
+        tailwind.config = { theme: { extend: { colors: { "primary": "#00288e", "surface": "#fbf8ff", "surface-container": "#eeedf7", "surface-container-low": "#f4f2fc", "surface-container-high": "#e8e7f1", "on-surface": "#1a1b22", "on-surface-variant": "#444653", "outline-variant": "#c4c5d5", "error": "#ba1a1a", "error-container": "#ffdad6", "on-error-container": "#93000a", "on-primary": "#ffffff" } } } }
     </script>
     <style>
-        body { background-color: #fbf8ff; font-family: 'Inter', sans-serif; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-thumb { background: #c4c5d5; border-radius: 4px; }
+        body {
+            background-color: #fbf8ff;
+            font-family: 'Inter', sans-serif;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #c4c5d5;
+            border-radius: 4px;
+        }
     </style>
 </head>
+
 <body class="text-on-surface">
+
     
-    <!-- Sidebar User (Giữ nguyên bố cục cũ) -->
-    <aside class="fixed left-0 top-0 h-full w-72 bg-surface-container-low z-40 flex flex-col py-6 border-r border-outline-variant">
+    <aside
+        class="fixed left-0 top-0 h-full w-72 bg-surface-container-low z-40 flex flex-col py-6 border-r border-outline-variant">
         <div class="px-8 mb-8 flex items-center gap-2">
             <span class="material-symbols-outlined text-primary text-3xl">meeting_room</span>
             <span class="text-xl font-bold text-primary tracking-tight">RoomHub</span>
         </div>
         <nav class="flex-1 px-4 flex flex-col gap-1">
-            <a class="flex items-center px-4 py-3 rounded-xl bg-blue-100 text-blue-900 font-semibold transition-all" href="index.php?controller=user&action=index">
+            <a class="flex items-center px-4 py-3 rounded-xl bg-blue-100 text-blue-900 font-semibold transition-all"
+                href="index.php?controller=user&action=index">
                 <span class="material-symbols-outlined mr-4">home</span><span>Trang chủ Đặt phòng</span>
             </a>
-            <a class="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high transition-all" href="index.php?controller=user&action=myBookings">
+            <a class="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high transition-all"
+                href="index.php?controller=user&action=myBookings">
                 <span class="material-symbols-outlined mr-4">history</span><span>Lịch sử của tôi</span>
             </a>
-            <?php if(isset($_SESSION['role']) &&$_SESSION['role'] === 'admin'): ?>
-            <div class="my-2 border-t border-outline-variant mx-4 opacity-50"></div>
-            <a class="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high transition-all" href="index.php?controller=admin&action=dashboard">
-                <span class="material-symbols-outlined mr-4">admin_panel_settings</span><span>Quản trị viên</span>
-            </a>
+            <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
+                <div class="my-2 border-t border-outline-variant mx-4 opacity-50"></div>
+                <a class="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high transition-all"
+                    href="index.php?controller=admin&action=dashboard">
+                    <span class="material-symbols-outlined mr-4">admin_panel_settings</span><span>Quản trị viên</span>
+                </a>
             <?php endif; ?>
         </nav>
         <div class="px-4 pt-6 border-t border-outline-variant">
@@ -43,10 +63,12 @@
                     <?php echo strtoupper(substr($_SESSION['full_name'] ?? 'U', 0, 1)); ?>
                 </div>
                 <div class="overflow-hidden flex-1">
-                    <p class="font-bold text-sm text-on-surface truncate"><?php echo htmlspecialchars($_SESSION['full_name'] ?? ''); ?></p>
+                    <p class="font-bold text-sm text-on-surface truncate">
+                        <?php echo htmlspecialchars($_SESSION['full_name'] ?? ''); ?></p>
                     <p class="text-xs text-on-surface-variant truncate uppercase tracking-widest">Nhân viên</p>
                 </div>
-                <a href="index.php?controller=auth&action=logout" class="text-error hover:bg-error-container p-2 rounded-full transition-colors" title="Đăng xuất">
+                <a href="index.php?controller=auth&action=logout"
+                    class="text-error hover:bg-error-container p-2 rounded-full transition-colors" title="Đăng xuất">
                     <span class="material-symbols-outlined text-[20px]">logout</span>
                 </a>
             </div>
@@ -55,25 +77,17 @@
 
     <!-- Main Content Wrapper -->
     <div class="pl-72 flex flex-col min-h-screen">
-        
+
         <!-- Top Header Bar -->
-        <header class="h-20 bg-white/80 backdrop-blur-md border-b border-outline-variant flex items-center justify-between px-10 sticky top-0 z-30">
-            <div class="flex items-center gap-2 text-sm text-on-surface-variant">
-                <span>Trang chủ</span>
-                <span class="material-symbols-outlined text-[16px]">chevron_right</span>
-                <span class="font-semibold text-primary">Đặt phòng họp</span>
-            </div>
+        <header
+            class="h-20 bg-white/80 backdrop-blur-md border-b border-outline-variant flex items-center justify-between px-10 sticky top-0 z-30">
             
+
             <div class="flex items-center gap-6">
-                <!-- Thanh tìm kiếm -->
-                <div class="relative w-80">
-                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                        <span class="material-symbols-outlined text-[20px]">search</span>
-                    </span>
-                    <input type="text" placeholder="Tìm kiếm phòng họp..." class="w-full pl-10 pr-4 py-2 bg-surface-container-low border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary">
-                </div>
+                
                 <!-- Ngày hệ thống -->
-                <div class="flex items-center gap-2 px-4 py-2 bg-surface-container-low rounded-full text-sm font-medium text-on-surface-variant">
+                <div
+                    class="flex items-center gap-2 px-4 py-2 bg-surface-container-low rounded-full text-sm font-medium text-on-surface-variant">
                     <span class="material-symbols-outlined text-[18px] text-primary">calendar_today</span>
                     <span><?php echo date('D, d/m/Y'); ?></span>
                 </div>
@@ -82,28 +96,31 @@
 
         <!-- Nội dung chính -->
         <main class="p-10 flex-1 flex flex-col gap-8 max-w-[1400px] w-full mx-auto">
-            
+
             <!-- Banner Chào mừng phong cách mẫu -->
-            <div class="flex justify-between items-center bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 p-8 rounded-3xl">
+            <div
+                class="flex justify-between items-center bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 p-8 rounded-3xl">
                 <div>
-                    <h1 class="text-3xl font-bold text-on-surface">Xin chào, <?php echo htmlspecialchars($_SESSION['full_name']); ?>! 👋</h1>
-                    <p class="text-on-surface-variant mt-1">Chúc bạn có một ngày làm việc hiệu quả và trọn vẹn năng lượng tại trụ sở điều hành.</p>
+                    <h1 class="text-3xl font-bold text-on-surface">Xin chào,
+                        <?php echo htmlspecialchars($_SESSION['full_name']); ?>! 👋</h1>
+                    <p class="text-on-surface-variant mt-1">Chúc bạn có một ngày làm việc hiệu quả và trọn vẹn năng
+                        lượng tại trụ sở điều hành.</p>
                 </div>
                 <div class="flex gap-3">
-                    <a href="index.php?controller=user&action=myBookings" class="bg-white text-primary border border-primary/20 hover:bg-gray-50 transition-all px-5 py-3 rounded-xl font-bold text-sm flex items-center gap-2 shadow-sm">
+                    <a href="index.php?controller=user&action=myBookings"
+                        class="bg-white text-primary border border-primary/20 hover:bg-gray-50 transition-all px-5 py-3 rounded-xl font-bold text-sm flex items-center gap-2 shadow-sm">
                         <span class="material-symbols-outlined text-[18px]">event_note</span> Xem lịch cá nhân
                     </a>
-                    <a href="index.php?controller=user&action=bookingForm&room_id=<?php echo $room['id']; ?>" class="w-full py-2.5 bg-surface-container hover:bg-primary hover:text-white text-primary font-bold rounded-xl transition-colors border border-primary/20 flex items-center justify-center gap-2">
-    <span class="material-symbols-outlined text-[18px]">event_available</span> Chọn phòng này
-</a>
                 </div>
             </div>
 
             <!-- 4 Thẻ thống kê nhanh (Metrics Cards) -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-outline-variant flex flex-col justify-between">
+            <!-- <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div
+                    class="bg-white p-6 rounded-2xl shadow-sm border border-outline-variant flex flex-col justify-between">
                     <div class="flex justify-between items-start">
-                        <span class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">CUỘC HỌP HÔM NAY</span>
+                        <span class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">CUỘC HỌP
+                            HÔM NAY</span>
                         <div class="w-10 h-10 rounded-xl bg-blue-50 text-primary flex items-center justify-center">
                             <span class="material-symbols-outlined">today</span>
                         </div>
@@ -114,22 +131,27 @@
                     </div>
                 </div>
 
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-outline-variant flex flex-col justify-between">
+                <div
+                    class="bg-white p-6 rounded-2xl shadow-sm border border-outline-variant flex flex-col justify-between">
                     <div class="flex justify-between items-start">
-                        <span class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">YÊU CẦU CỦA TÔI</span>
+                        <span class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">YÊU CẦU CỦA
+                            TÔI</span>
                         <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
                             <span class="material-symbols-outlined">history</span>
                         </div>
                     </div>
                     <div class="mt-4 flex items-baseline gap-2">
                         <span class="text-4xl font-extrabold text-on-surface">Đã gửi</span>
-                        <a href="index.php?controller=user&action=myBookings" class="text-xs text-amber-600 font-semibold hover:underline ml-auto">Xem chi tiết &rarr;</a>
+                        <a href="index.php?controller=user&action=myBookings"
+                            class="text-xs text-amber-600 font-semibold hover:underline ml-auto">Xem chi tiết &rarr;</a>
                     </div>
                 </div>
 
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-outline-variant flex flex-col justify-between">
+                <div
+                    class="bg-white p-6 rounded-2xl shadow-sm border border-outline-variant flex flex-col justify-between">
                     <div class="flex justify-between items-start">
-                        <span class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">PHÒNG ĐANG TRỐNG</span>
+                        <span class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">PHÒNG ĐANG
+                            TRỐNG</span>
                         <div class="w-10 h-10 rounded-xl bg-green-50 text-green-700 flex items-center justify-center">
                             <span class="material-symbols-outlined">meeting_room</span>
                         </div>
@@ -140,9 +162,11 @@
                     </div>
                 </div>
 
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-outline-variant flex flex-col justify-between">
+                <div
+                    class="bg-white p-6 rounded-2xl shadow-sm border border-outline-variant flex flex-col justify-between">
                     <div class="flex justify-between items-start">
-                        <span class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">HỆ THỐNG ROOMHUB</span>
+                        <span class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">HỆ THỐNG
+                            ROOMHUB</span>
                         <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center">
                             <span class="material-symbols-outlined">verified</span>
                         </div>
@@ -152,46 +176,62 @@
                         <span class="text-sm font-bold text-green-700">Trực tuyến ổn định</span>
                     </div>
                 </div>
-            </div>
+            </div> -->
 
             <!-- Khu vực danh sách phòng dạng lưới (Grid) -->
             <div class="flex flex-col gap-6">
                 <div class="flex justify-between items-center">
                     <div>
                         <h2 class="text-2xl font-bold text-on-surface">Danh sách phòng họp khả dụng</h2>
-                        <p class="text-sm text-on-surface-variant mt-1">Lựa chọn không gian và trang thiết bị phù hợp nhất cho buổi họp của bạn.</p>
+                        <p class="text-sm text-on-surface-variant mt-1">Lựa chọn không gian và trang thiết bị phù hợp
+                            nhất cho buổi họp của bạn.</p>
                     </div>
                 </div>
 
                 <!-- Grid Phòng -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <?php if (!empty($active_rooms)): ?>
-                        <?php foreach ($active_rooms as$room): ?>
-                            <div class="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all border border-outline-variant flex flex-col">
+                        <?php foreach ($active_rooms as $room): ?>
+                            <div
+                                class="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all border border-outline-variant flex flex-col">
                                 <div class="h-48 w-full relative">
-                                    <img src="<?php echo htmlspecialchars($room['image_url'] ?? 'https://via.placeholder.com/400x200'); ?>" alt="Room" class="w-full h-full object-cover">
+                                    <img src="<?php echo htmlspecialchars($room['image_url'] ?? 'https://via.placeholder.com/400x200'); ?>"
+                                        alt="Room" class="w-full h-full object-cover">
                                     <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                                    <div class="absolute top-3 right-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-primary flex items-center gap-1 shadow-sm">
+                                    <div
+                                        class="absolute top-3 right-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-primary flex items-center gap-1 shadow-sm">
                                         <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Trống
                                     </div>
                                     <div class="absolute bottom-3 left-4 right-4">
-                                        <h3 class="text-white font-bold text-lg"><?php echo htmlspecialchars($room['room_name']); ?></h3>
-                                        <p class="text-gray-200 text-sm flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">location_on</span> <?php echo htmlspecialchars($room['location']); ?></p>
+                                        <h3 class="text-white font-bold text-lg">
+                                            <?php echo htmlspecialchars($room['room_name']); ?></h3>
+                                        <p class="text-gray-200 text-sm flex items-center gap-1"><span
+                                                class="material-symbols-outlined text-[14px]">location_on 
+                                               
+                                            </span>
+                                            <?php echo htmlspecialchars('Phòng ' . $room['room_number'] . ' - ' . $room['location']); ?></p>
                                     </div>
                                 </div>
                                 <div class="p-5 flex flex-col gap-4 flex-1">
                                     <div class="flex justify-between items-center text-sm text-on-surface-variant">
-                                        <span class="flex items-center gap-1"><span class="material-symbols-outlined text-primary text-[18px]">groups</span> <?php echo $room['capacity']; ?> người</span>
-                                        <span class="flex items-center gap-1"><span class="material-symbols-outlined text-tertiary text-[18px]">aspect_ratio</span> <?php echo $room['area']; ?> m²</span>
+                                        <span class="flex items-center gap-1"><span
+                                                class="material-symbols-outlined text-primary text-[18px]">groups</span>
+                                            <?php echo $room['capacity']; ?> người</span>
+                                        <span class="flex items-center gap-1"><span
+                                                class="material-symbols-outlined text-tertiary text-[18px]">aspect_ratio</span>
+                                            <?php echo $room['area']; ?> m²</span>
                                     </div>
                                     <div class="text-sm">
                                         <p class="text-on-surface-variant mb-1 font-semibold">Trang thiết bị:</p>
-                                        <p class="text-on-surface line-clamp-2"><?php echo htmlspecialchars($room['equipment_details']); ?></p>
+                                        <p class="text-on-surface line-clamp-2">
+                                            <?php echo htmlspecialchars($room['equipment_details']); ?></p>
                                     </div>
                                     <div class="mt-auto pt-4 border-t border-outline-variant/30">
-                                        <a href="index.php?controller=user&action=selectTimeSlot&room_id=<?php echo $room['id']; ?>" class="w-full py-2.5 bg-surface-container hover:bg-primary hover:text-white text-primary font-bold rounded-xl transition-colors border border-primary/20 flex items-center justify-center gap-2">
-    <span class="material-symbols-outlined text-[18px]">event_available</span> Chọn phòng này
-</a>
+                                        <a href="index.php?controller=user&action=selectTimeSlot&room_id=<?php echo $room['id']; ?>"
+                                            class="w-full py-2.5 bg-surface-container hover:bg-primary hover:text-white text-primary font-bold rounded-xl transition-colors border border-primary/20 flex items-center justify-center gap-2">
+                                            <span class="material-symbols-outlined text-[18px]">event_available</span> Chọn
+                                            phòng này
+                                        </a>
                                     </div>
                                 </div>
                             </div>
@@ -199,7 +239,8 @@
                     <?php else: ?>
                         <div class="col-span-3 bg-white p-12 rounded-2xl text-center border border-outline-variant">
                             <span class="material-symbols-outlined text-4xl text-gray-400 mb-2">meeting_room</span>
-                            <p class="text-on-surface-variant font-medium">Hiện tại không có phòng họp nào đang hoạt động.</p>
+                            <p class="text-on-surface-variant font-medium">Hiện tại không có phòng họp nào đang hoạt động.
+                            </p>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -211,8 +252,9 @@
     <!-- MODAL ĐẶT PHÒNG -->
     <div id="bookingModal" class="fixed inset-0 z-50 hidden opacity-0 transition-opacity duration-300">
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeBookingModal()"></div>
-        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
-            
+        <div
+            class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+
             <div class="flex justify-between items-center p-6 border-b border-outline-variant bg-surface">
                 <h2 class="text-2xl font-bold text-primary flex items-center gap-2">
                     <span class="material-symbols-outlined">event_available</span> Đăng ký mượn phòng
@@ -223,16 +265,20 @@
             </div>
 
             <div class="p-6 overflow-y-auto">
-                <form id="bookingForm" action="index.php?controller=user&action=bookRoom" method="POST" class="flex flex-col gap-4">
-                    
+                <form id="bookingForm" action="index.php?controller=user&action=bookRoom" method="POST"
+                    class="flex flex-col gap-4">
+
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-1">Chọn Phòng *</label>
-                        <select name="room_id" id="room_select" required class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:border-primary">
+                        <select name="room_id" id="room_select" required
+                            class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:border-primary">
                             <option value="" disabled selected>-- Vui lòng chọn phòng --</option>
                             <?php if (!empty($active_rooms)): ?>
-                                <?php foreach ($active_rooms as$room): ?>
+                                <?php foreach ($active_rooms as $room): ?>
                                     <option value="<?php echo $room['id']; ?>" data-capacity="<?php echo $room['capacity']; ?>">
-                                        [Mã: <?php echo htmlspecialchars($room['room_number']); ?>] <?php echo htmlspecialchars($room['room_name']); ?> (Tối đa: <?php echo $room['capacity']; ?> người)
+                                        [Mã: <?php echo htmlspecialchars($room['room_number']); ?>]
+                                        <?php echo htmlspecialchars($room['room_name']); ?> (Tối đa:
+                                        <?php echo $room['capacity']; ?> người)
                                     </option>
                                 <?php endforeach; ?>
                             <?php endif; ?>
@@ -241,18 +287,22 @@
 
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-1">Tiêu đề cuộc họp *</label>
-                        <input type="text" name="title" required placeholder="VD: Họp giao ban dự án mới" class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:border-primary">
+                        <input type="text" name="title" required placeholder="VD: Họp giao ban dự án mới"
+                            class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:border-primary">
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-1">Số người tham gia *</label>
-                            <input type="number" name="participant_count" id="participant_count" min="1" value="1" required class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:border-primary">
+                            <input type="number" name="participant_count" id="participant_count" min="1" value="1"
+                                required
+                                class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:border-primary">
                             <p id="participant_error" class="text-xs text-error mt-1 hidden"></p>
                         </div>
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-1">Dịch vụ đi kèm</label>
-                            <select name="extra_services" class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:border-primary">
+                            <select name="extra_services"
+                                class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:border-primary">
                                 <option value="Không">Không cần thiết</option>
                                 <option value="Nước suối">Chuẩn bị Nước suối</option>
                                 <option value="Teabreak">Trà & Bánh (Teabreak)</option>
@@ -264,18 +314,23 @@
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-1">Thời gian bắt đầu *</label>
-                            <input type="datetime-local" name="start_time" id="start_time" required class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:border-primary">
+                            <input type="datetime-local" name="start_time" id="start_time" required
+                                class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:border-primary">
                         </div>
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-1">Thời gian kết thúc *</label>
-                            <input type="datetime-local" name="end_time" id="end_time" required class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:border-primary">
+                            <input type="datetime-local" name="end_time" id="end_time" required
+                                class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:border-primary">
                             <p id="end_time_error" class="text-xs text-error mt-1 hidden"></p>
                         </div>
                     </div>
 
                     <div class="mt-4 pt-4 border-t border-outline-variant flex justify-end gap-3">
-                        <button type="button" onclick="closeBookingModal()" class="px-6 py-2 rounded-lg text-gray-600 font-semibold hover:bg-gray-100">Hủy</button>
-                        <button type="submit" id="submitBtn" class="px-6 py-2 rounded-lg bg-primary text-white font-bold hover:bg-blue-800 shadow-md">Xác Nhận Đặt Phòng</button>
+                        <button type="button" onclick="closeBookingModal()"
+                            class="px-6 py-2 rounded-lg text-gray-600 font-semibold hover:bg-gray-100">Hủy</button>
+                        <button type="submit" id="submitBtn"
+                            class="px-6 py-2 rounded-lg bg-primary text-white font-bold hover:bg-blue-800 shadow-md">Xác
+                            Nhận Đặt Phòng</button>
                     </div>
                 </form>
             </div>
@@ -296,7 +351,7 @@
         function openBookingModal(roomId = null) {
             modal.classList.remove('hidden');
             setTimeout(() => modal.classList.remove('opacity-0'), 10);
-            if(roomId) roomSelect.value = roomId;
+            if (roomId) roomSelect.value = roomId;
             validateForm();
         }
 
@@ -355,4 +410,5 @@
         endTimeInput.addEventListener('change', validateForm);
     </script>
 </body>
+
 </html>

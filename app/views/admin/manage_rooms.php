@@ -17,16 +17,16 @@
         </div>
         <nav class="flex-1 px-md flex flex-col gap-xs" data-active-classes="bg-secondary-container text-on-secondary-container font-semibold">
             <a class="flex items-center px-md py-md rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" href="index.php?controller=admin&action=dashboard">
-                <span class="material-symbols-outlined mr-md">dashboard</span><span class="font-body-md text-body-md">Tổng quan Admin</span>
+                <span class="material-symbols-outlined mr-md">dashboard</span><span class="font-medium">Tổng quan Admin</span>
             </a>
             <a class="flex items-center px-md py-md rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" href="index.php?controller=admin&action=schedule">
-                <span class="material-symbols-outlined mr-md">calendar_month</span><span class="font-body-md text-body-md">Lịch phòng họp</span>
+                <span class="material-symbols-outlined mr-md">calendar_month</span><span class="font-medium">Lịch phòng họp</span>
             </a>
             <a class="flex items-center px-md py-md rounded-xl bg-secondary-container text-on-secondary-container font-semibold transition-all group" href="index.php?controller=admin&action=manageRooms">
-                <span class="material-symbols-outlined mr-md">apartment</span><span class="font-body-md text-body-md">Quản lý phòng</span>
+                <span class="material-symbols-outlined mr-md">apartment</span><span class="font-medium">Quản lý phòng</span>
             </a>
             <a class="flex items-center px-md py-md rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" href="index.php?controller=admin&action=approveBookings">
-                <span class="material-symbols-outlined mr-md">task_alt</span><span class="font-body-md text-body-md">Phê duyệt</span>
+                <span class="material-symbols-outlined mr-md">task_alt</span><span class="font-medium">Phê duyệt</span>
             </a>
         </nav>
         <div class="px-md pt-lg border-t border-outline-variant">
@@ -43,25 +43,6 @@
     </aside>
 
     <div class="pl-72">
-        <!-- Header -->
-        <header class="fixed top-0 left-72 right-0 h-16 bg-surface/80 backdrop-blur-xl z-40 flex items-center justify-between px-margin-desktop shadow-[0_1px_8px_rgba(0,0,0,0.02)]">
-            <div class="flex-1 max-w-md">
-                <div class="relative flex items-center">
-                    <span class="material-symbols-outlined absolute left-md text-on-surface-variant">search</span>
-                    <input class="w-full bg-surface-container border border-outline-variant rounded-full py-sm pl-xl pr-md focus:outline-none focus:border-primary text-body-md" placeholder="Tìm kiếm phòng..." type="text"/>
-                </div>
-            </div>
-            <div class="flex items-center gap-lg ml-xl">
-                <button class="relative p-xs text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors">
-                    <span class="material-symbols-outlined">notifications</span>
-                    <span class="absolute top-1 right-1 w-2 h-2 bg-error rounded-full"></span>
-                </button>
-                <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center cursor-pointer">
-                    <span class="material-symbols-outlined text-on-primary text-[18px]">person</span>
-                </div>
-            </div>
-        </header>
-
         <main class="relative pt-16 bg-background min-h-screen">
             <div class="flex flex-col w-full h-full relative">
                 <div class="px-margin-desktop pb-xl pt-lg relative z-10 flex flex-col gap-lg flex-1">
@@ -81,20 +62,53 @@
                         </a>
                     </div>
 
-                    <!-- Bộ lọc hiển thị -->
-                    <div class="flex items-center justify-between bg-surface-container-low p-md rounded-xl shadow-sm">
-                        <div class="flex items-center gap-md">
-                            <button class="bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors px-md py-sm rounded-lg font-label-md text-label-md flex items-center gap-xs">
-                                <span class="material-symbols-outlined text-[18px]">filter_alt</span>
-                                Bộ lọc
-                            </button>
-                            <div class="flex items-center gap-xs text-on-surface-variant">
-                                <span class="font-label-md text-label-md">Đang hiển thị:</span>
-                                <span class="font-body-md text-body-md bg-surface-container-highest px-sm py-xs rounded">
-                                    Tất cả (<?php echo count($rooms); ?>)
+                    <!-- THÊM MỚI: BỘ LỌC TÌM KIẾM ĐƯỢC TÍCH HỢP -->
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-outline-variant flex flex-col md:flex-row gap-4 justify-between items-center">
+                        <form method="GET" action="index.php" class="flex flex-wrap items-center gap-4 w-full">
+                            <input type="hidden" name="controller" value="admin">
+                            <input type="hidden" name="action" value="manageRooms">
+
+                            <div class="flex items-center gap-2">
+                                <span class="font-label-md text-label-md flex items-center gap-xs text-on-surface-variant mr-4">
+                                    <span class="material-symbols-outlined text-[18px]">filter_alt</span>
+                                    Bộ lọc:
                                 </span>
                             </div>
-                        </div>
+
+                            <!-- Lọc theo Tầng / Vị trí -->
+                            <div class="flex items-center gap-2 bg-surface-container-low px-3 py-2 rounded-xl border border-outline-variant focus-within:border-primary transition-colors">
+                                <span class="material-symbols-outlined text-gray-500 text-[20px]">layers</span>
+                                <select name="floor" onchange="this.form.submit()" class="bg-transparent text-sm font-medium focus:outline-none text-on-surface w-40 cursor-pointer">
+                                    <option value="">Tất cả các tầng</option>
+                                    <option value="Tầng 1" <?php echo (isset($_GET['floor']) && $_GET['floor'] === 'Tầng 1') ? 'selected' : ''; ?>>Tầng 1</option>
+                                    <option value="Tầng 2" <?php echo (isset($_GET['floor']) && $_GET['floor'] === 'Tầng 2') ? 'selected' : ''; ?>>Tầng 2</option>
+                                    <option value="Tầng 3" <?php echo (isset($_GET['floor']) && $_GET['floor'] === 'Tầng 3') ? 'selected' : ''; ?>>Tầng 3</option>
+                                    <option value="Tầng 4" <?php echo (isset($_GET['floor']) && $_GET['floor'] === 'Tầng 4') ? 'selected' : ''; ?>>Tầng 4</option>
+                                </select>
+                            </div>
+
+                            <!-- Lọc theo Trạng thái hoạt động -->
+                            <div class="flex items-center gap-2 bg-surface-container-low px-3 py-2 rounded-xl border border-outline-variant focus-within:border-primary transition-colors">
+                                <span class="material-symbols-outlined text-gray-500 text-[20px]">online_prediction</span>
+                                <select name="status" onchange="this.form.submit()" class="bg-transparent text-sm font-medium focus:outline-none text-on-surface w-48 cursor-pointer">
+                                    <option value="">Tất cả trạng thái</option>
+                                    <option value="active" <?php echo (isset($_GET['status']) && $_GET['status'] === 'active') ? 'selected' : ''; ?>>Đang hoạt động</option>
+                                    <option value="maintenance" <?php echo (isset($_GET['status']) && $_GET['status'] === 'maintenance') ? 'selected' : ''; ?>>Đang bảo trì / sửa chữa</option>
+                                </select>
+                            </div>
+
+                            <!-- Nút Xóa Lọc & Hiển thị số lượng -->
+                            <div class="flex items-center justify-between flex-1 pl-4 border-l border-outline-variant">
+                                <span class="font-body-md text-body-md text-on-surface-variant bg-surface-container-highest px-3 py-1 rounded-full">
+                                    Đang hiển thị: <strong class="text-primary"><?php echo count($rooms ?? []); ?></strong> phòng
+                                </span>
+                                <?php if (!empty($_GET['floor']) || !empty($_GET['status'])): ?>
+                                    <a href="index.php?controller=admin&action=manageRooms" class="text-sm text-error hover:text-on-error-container hover:bg-error-container px-3 py-1.5 rounded-lg transition-colors font-bold flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-[18px]">close</span> Xóa bộ lọc
+                                    </a>
+                                <?php endif; ?>
+                            </div>
+                        </form>
                     </div>
 
                     <!-- LƯỚI HIỂN THỊ DỮ LIỆU ĐỘNG TỪ DATABASE -->
@@ -106,20 +120,24 @@
                                 $status_class = $is_active ? 'bg-secondary-fixed text-on-secondary-fixed' : 'bg-surface-variant text-on-surface-variant';
                                 $status_text = $is_active ? 'Đang hoạt động' : 'Đang bảo trì';
                                 $card_opacity = $is_active ? '' : 'opacity-75 grayscale-[0.2]';
-                                $equipments = explode(',', $row['equipment_details']);
+                                
+                                // Đảm bảo equipments luôn là mảng hợp lệ để không bị lỗi explode
+                                $equipment_string = isset($row['equipment_details']) ? $row['equipment_details'] : '';
+                                $equipments = $equipment_string !== '' ? explode(',', $equipment_string) : [];
                                 ?>
 
                                 <!-- Khối Card cho 1 Phòng -->
-                                <div class="bg-surface-container-lowest rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 group flex flex-col relative h-[420px] <?php echo $card_opacity; ?>">
+                                <div class="bg-surface-container-lowest rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 group flex flex-col relative h-[500px] <?php echo $card_opacity; ?>">
                                     
                                     <!-- Nút thao tác -->
                                     <div class="absolute top-md right-md z-20 flex gap-xs opacity-0 group-hover:opacity-100 transition-opacity">
                                         <a href="index.php?controller=admin&action=editRoom&id=<?php echo $row['id']; ?>" class="w-8 h-8 rounded-full bg-surface-container-lowest/90 text-on-surface backdrop-blur flex items-center justify-center hover:bg-primary hover:text-on-primary transition-colors shadow-sm" title="Chỉnh sửa">
                                             <span class="material-symbols-outlined text-[18px]">edit</span>
                                         </a>
-                                        <button class="w-8 h-8 rounded-full bg-surface-container-lowest/90 text-on-surface backdrop-blur flex items-center justify-center hover:bg-error hover:text-on-error transition-colors shadow-sm" title="Xóa">
+                                        <!-- Gọi hàm confirm của javascript để cảnh báo việc xoá lịch -->
+                                        <a href="index.php?controller=admin&action=deleteRoom&id=<?php echo $row['id']; ?>" onclick="return confirm('Bạn có chắc chắn muốn xóa phòng này? Toàn bộ các lịch đặt liên quan đến phòng này cũng có thể bị ảnh hưởng hoặc xóa theo!');" class="w-8 h-8 rounded-full bg-surface-container-lowest/90 text-on-surface backdrop-blur flex items-center justify-center hover:bg-error hover:text-on-error transition-colors shadow-sm" title="Xóa phòng">
                                             <span class="material-symbols-outlined text-[18px]">delete</span>
-                                        </button>
+                                        </a>
                                     </div>
 
                                     <!-- Ảnh và Header -->
@@ -127,13 +145,13 @@
                                         <div class="absolute top-md left-md z-10 px-sm py-[2px] rounded <?php echo $status_class; ?> font-label-md text-label-md shadow-sm">
                                             <?php echo $status_text; ?>
                                         </div>
-                                        <img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" src="../public/<?php echo htmlspecialchars($row['image_url'] ?? 'https://via.placeholder.com/400x200'); ?>" onerror="this.src='<?php echo htmlspecialchars($row['image_url'] ?? ''); ?>'" alt="Room Image" />
+                                        <img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" src="../public/<?php echo htmlspecialchars($row['image_url'] ?? 'https://via.placeholder.com/400x200'); ?>" onerror="this.src='<?php echo htmlspecialchars($row['image_url'] ?? 'https://via.placeholder.com/400x200'); ?>'" alt="Room Image" />
                                         <div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
                                         <div class="absolute bottom-md left-md right-md">
-                                            <h3 class="font-headline-md text-headline-md text-on-error mix-blend-difference line-clamp-1">
+                                            <h3 class="text-white font-bold text-lg">
                                                 <?php echo htmlspecialchars($row['room_name'] . ' (' . $row['room_number'] . ')'); ?>
                                             </h3>
-                                            <p class="font-body-md text-body-md text-on-error/80 mix-blend-difference flex items-center gap-xs">
+                                            <p class="text-gray-200 text-sm flex items-center gap-1">
                                                 <span class="material-symbols-outlined text-[16px]">location_on</span> 
                                                 <?php echo htmlspecialchars($row['location'] ?? 'Chưa cập nhật'); ?>
                                             </p>
@@ -163,14 +181,18 @@
                                         <div class="flex-1">
                                             <p class="font-label-md text-label-md text-on-surface-variant mb-xs">Thiết bị đi kèm</p>
                                             <div class="flex flex-wrap gap-xs">
-                                                <?php foreach ($equipments as $item): ?>
-                                                    <?php if (trim($item) !== ''): ?>
-                                                        <span class="inline-flex items-center gap-xs px-sm py-[2px] bg-surface-container rounded text-on-surface font-body-sm text-body-md">
-                                                            <span class="material-symbols-outlined text-[16px]">check_circle</span>
-                                                            <?php echo htmlspecialchars(trim($item)); ?>
-                                                        </span>
-                                                    <?php endif; ?>
-                                                <?php endforeach; ?>
+                                                <?php if (!empty($equipments)): ?>
+                                                    <?php foreach ($equipments as $item): ?>
+                                                        <?php if (trim($item) !== ''): ?>
+                                                            <span class="inline-flex items-center gap-xs px-sm py-[2px] bg-surface-container rounded text-on-surface font-body-sm text-body-md">
+                                                                <span class="material-symbols-outlined text-[16px]">check_circle</span>
+                                                                <?php echo htmlspecialchars(trim($item)); ?>
+                                                            </span>
+                                                        <?php endif; ?>
+                                                    <?php endforeach; ?>
+                                                <?php else: ?>
+                                                    <span class="text-sm text-gray-400 italic">Chưa cập nhật thiết bị</span>
+                                                <?php endif; ?>
                                             </div>
                                         </div>
 
@@ -178,9 +200,9 @@
                                             <span class="font-code-sm text-code-sm text-on-surface-variant">ID: RM-<?php echo $row['id']; ?></span>
                                             
                                             <?php if ($is_active): ?>
-                                                <a href="index.php?controller=admin&action=toggleStatus&id=<?php echo $row['id']; ?>" class="text-error hover:bg-error-container hover:text-on-error-container px-sm py-xs rounded transition-colors font-label-md text-label-md">Tạm ngưng</a>
+                                                <a href="index.php?controller=admin&action=toggleRoomStatus&id=<?php echo $row['id']; ?>" class="text-error hover:bg-error-container hover:text-on-error-container px-sm py-xs rounded transition-colors font-label-md text-label-md">Chuyển sang bảo trì</a>
                                             <?php else: ?>
-                                                <a href="index.php?controller=admin&action=toggleStatus&id=<?php echo $row['id']; ?>" class="text-primary hover:bg-primary-container hover:text-on-primary-container px-sm py-xs rounded transition-colors font-label-md text-label-md">Kích hoạt lại</a>
+                                                <a href="index.php?controller=admin&action=toggleRoomStatus&id=<?php echo $row['id']; ?>" class="text-primary hover:bg-primary-container hover:text-on-primary-container px-sm py-xs rounded transition-colors font-label-md text-label-md">Kích hoạt hoạt động</a>
                                             <?php endif; ?>
                                         </div>
                                     </div>
@@ -190,8 +212,10 @@
                                 <?php
                             }
                         } else {
-                            echo "<div class='col-span-full text-center py-xl bg-surface-container-low rounded-xl'>";
-                            echo "<p class='font-body-lg text-body-lg text-on-surface-variant'>Hiện tại chưa có phòng nào trong hệ thống.</p>";
+                            echo "<div class='col-span-full flex flex-col items-center justify-center py-20 bg-surface-container-low rounded-2xl border border-dashed border-outline-variant'>";
+                            echo "<span class='material-symbols-outlined text-gray-400 text-6xl mb-4'>search_off</span>";
+                            echo "<h3 class='text-lg font-bold text-on-surface'>Không tìm thấy phòng nào</h3>";
+                            echo "<p class='font-body-lg text-body-lg text-on-surface-variant mt-2'>Thử thay đổi điều kiện lọc (Tầng hoặc Trạng thái) để xem lại.</p>";
                             echo "</div>";
                         }
                         ?>
@@ -200,5 +224,14 @@
             </div>
         </main>
     </div>
+
+    <!-- Script hiển thị thông báo lỗi trùng số phòng từ Controller truyền về -->
+    <?php if (isset($_GET['error']) && $_GET['error'] === 'duplicate_room'): ?>
+        <script>
+            alert("LỖI: Số phòng này đã tồn tại trong hệ thống. Vui lòng kiểm tra lại!");
+            // Xóa tham số error trên URL để không báo lại nếu user F5
+            window.history.replaceState(null, null, window.location.pathname + "?controller=admin&action=manageRooms");
+        </script>
+    <?php endif; ?>
 </body>
 </html>

@@ -46,6 +46,14 @@ $defaultEnd = $defaultStart->modify('+1 hour');
 $defaultStartValue = $defaultStart->format('Y-m-d\TH:i');
 $defaultEndValue = $defaultEnd->format('Y-m-d\TH:i');
 
+// Khi Controller trả về trang này do xung đột, giữ nguyên khung giờ người dùng vừa chọn
+if (!empty($posted_start) && !empty($posted_end)) {
+    $defaultStartValue = str_replace(' ', 'T', substr((string)$posted_start, 0, 16));
+    $defaultEndValue   = str_replace(' ', 'T', substr((string)$posted_end, 0, 16));
+}
+$conflictType    = $conflict_type ?? null;            // 'holding' | 'booked' | null
+$conflictSeconds = (int)($conflict_seconds ?? 0);
+
 $filteredSlots = [];
 if (!empty($booked_slots) && is_iterable($booked_slots)) {
     foreach ($booked_slots as $slot) {
@@ -60,8 +68,10 @@ if (!empty($booked_slots) && is_iterable($booked_slots)) {
             continue;
         }
 
-        // Chỉ hiển thị lịch thuộc ngày đang xem; ẩn lịch đã kết thúc.
-        if ($slotStart->format('Y-m-d') !== $selectedDate || $slotEnd <= $now) {
+        // Hiển thị mọi booking giao với ngày đang xem, kể cả booking qua nửa đêm.
+        $dayStart = new DateTimeImmutable($selectedDate . ' 00:00:00');
+        $dayEnd = $dayStart->modify('+1 day');
+        if ($slotStart >= $dayEnd || $slotEnd <= $dayStart || $slotEnd <= $now) {
             continue;
         }
 
@@ -135,29 +145,12 @@ $statusLabels = [
                 <div class="min-w-0">
                     <h1 class="text-xl font-bold text-primary sm:text-2xl">Chọn khung giờ phòng họp</h1>
                     <p class="mt-1 break-words text-sm text-muted">
-                        Phòng: <strong class="text-ink"><?= h($roomName) ?></strong>
+                        Tên: <strong class="text-ink"><?= h($roomName) ?></strong><span aria-hidden="true"> ·
+                        Số: <strong class="text-ink"><?= h($room['room_number'] ?? 'Chưa cập nhật') ?></strong>
                         <span aria-hidden="true"> · </span><?= h($roomLocation) ?>
                     </p>
                 </div>
             </div>
-
-            <form method="GET" action="index.php" class="flex flex-col gap-2 sm:flex-row sm:items-center" aria-label="Chọn ngày xem lịch">
-                <input type="hidden" name="controller" value="user">
-                <input type="hidden" name="action" value="selectTimeSlot">
-                <input type="hidden" name="room_id" value="<?= (int)$roomId ?>">
-                <label for="view_date" class="text-sm font-semibold">Ngày xem lịch</label>
-                <input
-                    id="view_date"
-                    type="date"
-                    name="date"
-                    value="<?= h($selectedDate) ?>"
-                    min="<?= h($todayString) ?>"
-                    required
-                    class="min-w-0 rounded-xl border border-line bg-white px-3 py-2.5 text-sm focus:border-primary focus:outline-none">
-                <button type="submit" class="rounded-xl border border-line px-4 py-2.5 text-sm font-semibold transition hover:bg-slate-50">
-                    Xem lịch
-                </button>
-            </form>
         </header>
 
         <?php if (!$dateIsValid): ?>
@@ -171,22 +164,6 @@ $statusLabels = [
                 Không xác định được phòng họp. Vui lòng quay lại danh sách phòng và chọn lại.
             </div>
         <?php endif; ?>
-
-        <section aria-label="Chú thích trạng thái" class="flex flex-wrap gap-x-5 gap-y-3 rounded-xl border border-line bg-white px-4 py-4 text-sm shadow-sm sm:px-6">
-            <div class="flex items-center gap-2">
-                <span class="h-3.5 w-3.5 rounded border border-green-300 bg-green-100"></span>
-                <span>Khung giờ có thể đặt</span>
-            </div>
-            <div class="flex items-center gap-2">
-                <span class="h-3.5 w-3.5 rounded border border-blue-300 bg-blue-100"></span>
-                <span>Đã xác nhận</span>
-            </div>
-            <div class="flex items-center gap-2">
-                <span class="h-3.5 w-3.5 rounded border border-amber-300 bg-amber-100"></span>
-                <span>Đang giữ chỗ hoặc chờ duyệt</span>
-            </div>
-        </section>
-
         <section class="flex flex-col gap-6 rounded-2xl border border-line bg-white p-4 shadow-sm sm:p-7">
             <div>
                 <h2 class="text-lg font-bold sm:text-xl">Đăng ký thời gian họp</h2>
@@ -233,6 +210,14 @@ $statusLabels = [
                 </div>
 
                 <div id="time-error" class="hidden rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert" aria-live="polite"></div>
+
+                <!-- HỘP CHỜ: khung giờ đang được người khác giữ chỗ -->
+                <div id="wait-box" class="hidden flex-col gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-4 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between" role="status" aria-live="polite">
+                    <p id="wait-text" class="font-medium"></p>
+                    <button type="button" id="cancel-wait" class="w-fit shrink-0 rounded-lg border border-amber-400 bg-white px-3 py-1.5 text-xs font-semibold hover:bg-amber-100">
+                        Ngừng chờ / chọn giờ khác
+                    </button>
+                </div>
 
                 <section class="flex flex-col gap-3" aria-labelledby="busy-slots-heading">
                     <div>
@@ -293,7 +278,21 @@ $statusLabels = [
     (() => {
         'use strict';
 
-        const selectedDate = <?= json_encode($selectedDate, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+        const roomId = <?= (int)$roomId ?>;
+        const initialConflict = <?= json_encode(
+            ['type' => $conflictType, 'seconds' => $conflictSeconds],
+            JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_THROW_ON_ERROR
+        ) ?>;
+
+        // Dữ liệu lịch chỉ dùng để hỗ trợ giao diện; backend vẫn phải kiểm tra lại.
+        const bookedSlots = <?= json_encode(array_map(static function ($s) {
+            return [
+                'start' => $s['_start']->format('Y-m-d\TH:i:s'),
+                'end' => $s['_end']->format('Y-m-d\TH:i:s'),
+                'status' => $s['_status'],
+            ];
+        }, $filteredSlots), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_THROW_ON_ERROR) ?>;
+
         const startInput = document.getElementById('start_time');
         const endInput = document.getElementById('end_time');
         const form = document.getElementById('booking-form');
@@ -302,59 +301,154 @@ $statusLabels = [
 
         if (!startInput || !endInput || !form) return;
 
-        // Tạo chuỗi ngày giờ theo giờ địa phương, không dùng toISOString() vì hàm đó đổi sang UTC.
         const localDateTimeString = (date) => {
             const pad = (number) => String(number).padStart(2, '0');
             return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
         };
 
-        const localDateString = (date) => {
-            const pad = (number) => String(number).padStart(2, '0');
-            return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-        };
-
         const showError = (message) => {
+            if (!errorBox) return;
             errorBox.textContent = message;
             errorBox.classList.remove('hidden');
         };
 
         const clearError = () => {
+            if (!errorBox) return;
             errorBox.textContent = '';
             errorBox.classList.add('hidden');
         };
 
-        const updateConstraints = () => {
-            const now = new Date();
-            const minimumStart = selectedDate === localDateString(now)
-                ? localDateTimeString(now)
-                : `${selectedDate}T00:00`;
+        // ====== CHẾ ĐỘ CHỜ ======
+        const waitBox = document.getElementById('wait-box');
+        const waitText = document.getElementById('wait-text');
+        const cancelWait = document.getElementById('cancel-wait');
+        let pollTimer = null;
+        let tickTimer = null;
+        let waitLeft = 0;
+        let isWaiting = false;
+        let isSubmitting = false;
+        let pollInFlight = false;
+        let pollAbortController = null;
 
-            startInput.min = minimumStart;
-            endInput.min = startInput.value && startInput.value > minimumStart
-                ? startInput.value
-                : minimumStart;
+        const fmt = (sec) => {
+            const safe = Math.max(0, Number(sec) || 0);
+            return `${String(Math.floor(safe / 60)).padStart(2, '0')}:${String(safe % 60).padStart(2, '0')}`;
+        };
 
-            // Không tự sửa giá trị người dùng đang nhập; chỉ báo lỗi để họ chủ động điều chỉnh.
-            if (startInput.value && endInput.value && endInput.value <= startInput.value) {
-                showError('Thời gian kết thúc phải sau thời gian bắt đầu.');
-            } else {
-                clearError();
+        const renderWait = () => {
+            waitText.textContent = `Khung giờ đang được giữ chỗ (thời gian ước tính còn ${fmt(waitLeft)}). ` +
+                'Hệ thống sẽ kiểm tra lại tự động. Nếu người khác hoàn tất đặt phòng, bạn cần chọn giờ khác.';
+        };
+
+        const stopWaiting = () => {
+            isWaiting = false;
+            clearInterval(pollTimer);
+            clearInterval(tickTimer);
+            pollTimer = null;
+            tickTimer = null;
+            if (pollAbortController) {
+                pollAbortController.abort();
+                pollAbortController = null;
+            }
+            pollInFlight = false;
+            startInput.readOnly = false;
+            endInput.readOnly = false;
+            waitBox.classList.add('hidden');
+            waitBox.classList.remove('flex');
+        };
+
+        const poll = async () => {
+            if (!isWaiting || isSubmitting || pollInFlight) return;
+            pollInFlight = true;
+            const requestedStart = startInput.value;
+            const requestedEnd = endInput.value;
+            pollAbortController = new AbortController();
+
+            try {
+                const qs = new URLSearchParams({
+                    controller: 'user',
+                    action: 'checkSlot',
+                    room_id: String(roomId),
+                    start_time: requestedStart,
+                    end_time: requestedEnd
+                });
+                const res = await fetch('index.php?' + qs.toString(), {
+                    credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json' },
+                    signal: pollAbortController.signal
+                });
+
+                if (!res.ok) {
+                    if (res.status === 401 || res.status === 403) {
+                        stopWaiting();
+                        showError('Phiên đăng nhập không còn hợp lệ. Vui lòng đăng nhập lại.');
+                    }
+                    return;
+                }
+
+                const data = await res.json();
+                // Bỏ qua response cũ hoặc response đến sau khi người dùng đã hủy chờ.
+                if (!isWaiting || isSubmitting || requestedStart !== startInput.value || requestedEnd !== endInput.value) return;
+
+                if (data.state === 'free') {
+                    isSubmitting = true;
+                    stopWaiting();
+                    waitText.textContent = 'Phòng vừa trống. Đang gửi yêu cầu giữ chỗ...';
+                    submitButton.disabled = true;
+                    submitButton.setAttribute('aria-busy', 'true');
+                    form.submit(); // Backend phải kiểm tra và giữ chỗ nguyên tử lần cuối.
+                } else if (data.state === 'booked' || data.state === 'invalid' || data.state === 'unauthorized') {
+                    stopWaiting();
+                    showError(data.state === 'booked'
+                        ? 'Khung giờ này đã được đặt. Vui lòng chọn khung giờ khác.'
+                        : 'Không thể tiếp tục kiểm tra khung giờ. Vui lòng tải lại trang và thử lại.');
+                } else if (data.state === 'holding') {
+                    waitLeft = Math.max(0, Number(data.seconds_left) || 0);
+                    renderWait();
+                } else {
+                    // Trạng thái không xác định: không tự gửi form.
+                    showError('Máy chủ trả về trạng thái không xác định. Vui lòng thử lại.');
+                }
+            } catch (error) {
+                if (error.name !== 'AbortError' && isWaiting) {
+                    waitText.textContent = 'Đang gặp sự cố kết nối. Hệ thống sẽ thử kiểm tra lại.';
+                }
+            } finally {
+                pollInFlight = false;
+                pollAbortController = null;
             }
         };
 
-        startInput.addEventListener('change', () => {
-            endInput.min = startInput.value || startInput.min;
-            if (endInput.value && startInput.value && endInput.value <= startInput.value) {
-                showError('Thời gian kết thúc phải sau thời gian bắt đầu. Vui lòng chọn lại.');
-            } else {
-                clearError();
-            }
-        });
+        function startWaiting(seconds) {
+            if (isSubmitting) return;
+            stopWaiting();
+            clearError();
+            isWaiting = true;
+            waitLeft = Math.max(0, Number(seconds) || 0);
+            startInput.readOnly = true;
+            endInput.readOnly = true;
+            waitBox.classList.remove('hidden');
+            waitBox.classList.add('flex');
+            renderWait();
+            tickTimer = setInterval(() => {
+                if (waitLeft > 0) waitLeft--;
+                renderWait();
+            }, 1000);
+            pollTimer = setInterval(poll, 4000);
+            poll();
+        }
 
-        endInput.addEventListener('change', updateConstraints);
-        startInput.addEventListener('input', updateConstraints);
+        if (cancelWait) cancelWait.addEventListener('click', stopWaiting);
+
+        // Server vừa báo xung đột khi bấm "Tiếp tục"
+        if (initialConflict.type === 'holding') startWaiting(initialConflict.seconds || 300);
+        else if (initialConflict.type === 'booked') showError('Phòng ĐÃ CÓ NGƯỜI ĐẶT trong khung giờ này. Vui lòng chọn khung giờ khác.');
 
         form.addEventListener('submit', (event) => {
+            if (isSubmitting) {
+                event.preventDefault();
+                return;
+            }
             clearError();
 
             if (!startInput.value || !endInput.value) {
@@ -362,13 +456,6 @@ $statusLabels = [
                 showError('Vui lòng nhập đầy đủ thời gian bắt đầu và kết thúc.');
                 return;
             }
-
-            // if (startInput.value.slice(0, 10) !== selectedDate ||
-            //     endInput.value.slice(0, 10) !== selectedDate) {
-            //     event.preventDefault();
-            //     showError('Thời gian bắt đầu và kết thúc phải thuộc ngày đang xem. Vui lòng chọn lại ngày nếu cần.');
-            //     return;
-            // }
 
             if (endInput.value <= startInput.value) {
                 event.preventDefault();
@@ -383,12 +470,32 @@ $statusLabels = [
                 return;
             }
 
+            // KIỂM TRA TRÙNG LẶP TRỰC TIẾP TRÊN TRÌNH DUYỆT (CHẶN GIAO DIỆN)
+            const userStart = new Date(startInput.value);
+            const userEnd = new Date(endInput.value);
+            
+            for (let slot of bookedSlots) {
+                let slotStart = new Date(slot.start);
+                let slotEnd = new Date(slot.end);
+                
+                // Nếu giờ người dùng nhập giao thoa với giờ đã bận (start < end_bận và end > start_bận)
+                if (userStart < slotEnd && userEnd > slotStart) {
+                    event.preventDefault();
+                    if (slot.status === 'holding') {
+                        // Người khác đang giữ chỗ -> vào chế độ chờ, tự kiểm tra định kỳ
+                        startWaiting(300);
+                    } else {
+                        showError('Phòng ĐÃ CÓ NGƯỜI ĐẶT trong khung giờ này (chờ duyệt / đã duyệt). Vui lòng chọn khung giờ khác.');
+                    }
+                    return;
+                }
+            }
+
+            isSubmitting = true;
             submitButton.disabled = true;
             submitButton.setAttribute('aria-busy', 'true');
             submitButton.firstChild.textContent = 'Đang gửi yêu cầu... ';
         });
-
-        updateConstraints();
     })();
     </script>
 </body>

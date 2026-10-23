@@ -1,6 +1,8 @@
 <?php
-// Nhận biến $pending_bookings từ AdminController truyền sang
+date_default_timezone_set('Asia/Ho_Chi_Minh');
+// Nhận biến từ AdminController truyền sang
 $pending_count = isset($pending_bookings) ? count($pending_bookings) : 0;
+$approved_count = isset($approved_bookings) ? count($approved_bookings) : 0;
 ?>
 <html lang="vi">
 <head>
@@ -21,16 +23,16 @@ $pending_count = isset($pending_bookings) ? count($pending_bookings) : 0;
         </div>
         <nav class="flex-1 px-md flex flex-col gap-xs" data-active-classes="bg-secondary-container text-on-secondary-container font-semibold">
             <a class="flex items-center px-md py-md rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" href="index.php?controller=admin&action=dashboard">
-                <span class="material-symbols-outlined mr-md">dashboard</span><span class="font-body-md text-body-md">Tổng quan Admin</span>
+                <span class="material-symbols-outlined mr-md">dashboard</span><span class="font-medium">Tổng quan Admin</span>
             </a>
             <a class="flex items-center px-md py-md rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" href="index.php?controller=admin&action=schedule">
-                <span class="material-symbols-outlined mr-md">calendar_month</span><span class="font-body-md text-body-md">Lịch phòng họp</span>
+                <span class="material-symbols-outlined mr-md">calendar_month</span><span class="font-medium">Lịch phòng họp</span>
             </a>
             <a class="flex items-center px-md py-md rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" href="index.php?controller=admin&action=manageRooms">
-                <span class="material-symbols-outlined mr-md">apartment</span><span class="font-body-md text-body-md">Quản lý phòng</span>
+                <span class="material-symbols-outlined mr-md">apartment</span><span class="font-medium">Quản lý phòng</span>
             </a>
             <a class="flex items-center px-md py-md rounded-xl bg-secondary-container text-on-secondary-container font-semibold transition-all group" href="index.php?controller=admin&action=approveBookings">
-                <span class="material-symbols-outlined mr-md">task_alt</span><span class="font-body-md text-body-md">Phê duyệt</span>
+                <span class="material-symbols-outlined mr-md">task_alt</span><span class="font-medium">Phê duyệt</span>
             </a>
         </nav>
         <div class="px-md pt-lg border-t border-outline-variant">
@@ -62,115 +64,214 @@ $pending_count = isset($pending_bookings) ? count($pending_bookings) : 0;
                     </div>
                 </div>
 
-                <!-- Danh sách Card Động -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-                    <?php
-                    if ($pending_count > 0) {
-                        foreach ($pending_bookings as $row) {
-                            // Xử lý logic Khẩn cấp (Nếu diễn ra trong vòng 24h tới)
-                            $now = time();
-                            $start_ts = strtotime($row['start_time']);
-                            $time_diff = $start_ts - $now;
-                            
-                            $is_expired = ($time_diff < 0); // Đã lố giờ bắt đầu
-                            $is_urgent = (!$is_expired && $time_diff <= 86400); // Còn hạn và trong vòng 24h
-                            
-                            // Format thời gian hiển thị
-                            $start_str = date('H:i', $start_ts);
-                            $end_str = date('H:i, d/m/Y', strtotime($row['end_time']));
-                            
-                            // Style cảnh báo
-                            $border_color = 'border-outline-variant';
-                            if ($is_urgent) $border_color = 'border-error';
-                            if ($is_expired) $border_color = 'border-gray-300 opacity-75';
-                            ?>
-                            
-                            <!-- Card Yêu Cầu -->
-                            <div class="bg-white rounded-2xl p-6 shadow-sm border <?php echo $border_color; ?> relative flex flex-col gap-4">
-                                <?php if ($is_urgent): ?>
-                                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-error rounded-l-2xl"></div>
-                                <?php elseif ($is_expired): ?>
-                                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-gray-400 rounded-l-2xl"></div>
-                                <?php endif; ?>
+                <!-- CẢNH BÁO LỖI VÀ THÀNH CÔNG -->
+                <?php if (isset($_GET['msg'])): ?>
+                    <?php if ($_GET['msg'] === 'error'): ?>
+                        <div class="mt-2 bg-error-container text-error px-5 py-4 rounded-xl flex items-center gap-3 shadow-sm font-semibold border border-error">
+                            <span class="material-symbols-outlined text-[24px]">warning</span>
+                            <p>Từ chối duyệt: Phòng này đã có một lịch khác được phê duyệt trùng thời gian!</p>
+                        </div>
+                    <?php elseif ($_GET['msg'] === 'approved'): ?>
+                        <div class="mt-2 bg-green-100 text-green-800 px-5 py-4 rounded-xl flex items-center gap-3 shadow-sm font-semibold border border-green-300">
+                            <span class="material-symbols-outlined text-[24px]">check_circle</span>
+                            <p>Đã phê duyệt yêu cầu đặt phòng thành công.</p>
+                        </div>
+                    <?php elseif ($_GET['msg'] === 'cancelled'): ?>
+                        <div class="mt-2 bg-gray-100 text-gray-800 px-5 py-4 rounded-xl flex items-center gap-3 shadow-sm font-semibold border border-gray-300">
+                            <span class="material-symbols-outlined text-[24px]">delete</span>
+                            <p>Đã từ chối/xóa yêu cầu đặt phòng.</p>
+                        </div>
+                    <?php endif; ?>
+                <?php endif; ?>
 
-                                <!-- Header Card -->
-                                <div class="flex justify-between items-start">
-                                    <div class="flex items-center gap-4">
-                                        <div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center text-primary font-bold text-xl <?php if($is_expired) echo 'grayscale'; ?>">
-                                            <?php echo strtoupper(substr($row['full_name'], 0, 1)); ?>
+                <!-- DANH SÁCH CHỜ DUYỆT -->
+                <div>
+                    <h2 class="text-xl font-bold text-on-surface border-b border-outline-variant pb-2 mb-6">Yêu cầu chờ duyệt</h2>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <?php
+                        if ($pending_count > 0) {
+                            foreach ($pending_bookings as $row) {
+                                $now = time();
+                                $start_ts = strtotime($row['start_time']);
+                                $time_diff = $start_ts - $now;
+                                
+                                $is_expired = ($time_diff < 0);
+                                $is_urgent = (!$is_expired && $time_diff <= 86400);
+                                
+                                $start_str = date('H:i', $start_ts);
+                                $end_str = date('H:i, d/m/Y', strtotime($row['end_time']));
+                                
+                                $border_color = 'border-outline-variant';
+                                if ($is_urgent) $border_color = 'border-error';
+                                if ($is_expired) $border_color = 'border-gray-300 opacity-75';
+                                ?>
+                                <div class="bg-white rounded-2xl p-6 shadow-sm border <?php echo $border_color; ?> relative flex flex-col gap-4">
+                                    <?php if ($is_urgent): ?>
+                                        <div class="absolute left-0 top-0 bottom-0 w-1 bg-error rounded-l-2xl"></div>
+                                    <?php elseif ($is_expired): ?>
+                                        <div class="absolute left-0 top-0 bottom-0 w-1 bg-gray-400 rounded-l-2xl"></div>
+                                    <?php endif; ?>
+
+                                    <div class="flex justify-between items-start">
+                                        <div class="flex items-center gap-4">
+                                            <div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center text-primary font-bold text-xl <?php if($is_expired) echo 'grayscale'; ?>">
+                                                <?php echo strtoupper(substr($row['full_name'], 0, 1)); ?>
+                                            </div>
+                                            <div>
+                                                <h3 class="text-lg font-bold text-on-surface"><?php echo htmlspecialchars($row['full_name']); ?></h3>
+                                                <p class="text-sm text-on-surface-variant"><?php echo htmlspecialchars($row['email']); ?></p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h3 class="text-lg font-bold text-on-surface"><?php echo htmlspecialchars($row['full_name']); ?></h3>
-                                            <p class="text-sm text-on-surface-variant"><?php echo htmlspecialchars($row['email']); ?></p>
-                                        </div>
+                                        
+                                        <?php if ($is_expired): ?>
+                                            <span class="bg-gray-200 text-gray-600 px-2 py-1 rounded text-xs font-bold uppercase flex items-center gap-1">
+                                                <span class="material-symbols-outlined text-[14px]">timer_off</span> Quá hạn
+                                            </span>
+                                        <?php elseif ($is_urgent): ?>
+                                            <span class="bg-error-container text-error px-2 py-1 rounded text-xs font-bold uppercase flex items-center gap-1">
+                                                <span class="w-2 h-2 rounded-full bg-error animate-pulse"></span> Khẩn cấp
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="text-on-surface-variant text-xs font-semibold uppercase">Bình thường</span>
+                                        <?php endif; ?>
                                     </div>
                                     
-                                    <!-- Hiển thị Nhãn Trạng thái -->
-                                    <?php if ($is_expired): ?>
-                                        <span class="bg-gray-200 text-gray-600 px-2 py-1 rounded text-xs font-bold uppercase flex items-center gap-1">
-                                            <span class="material-symbols-outlined text-[14px]">timer_off</span> Quá hạn
-                                        </span>
-                                    <?php elseif ($is_urgent): ?>
-                                        <span class="bg-error-container text-error px-2 py-1 rounded text-xs font-bold uppercase flex items-center gap-1">
-                                            <span class="w-2 h-2 rounded-full bg-error animate-pulse"></span> Khẩn cấp
-                                        </span>
-                                    <?php else: ?>
-                                        <span class="text-on-surface-variant text-xs font-semibold uppercase">Bình thường</span>
-                                    <?php endif; ?>
-                                </div>
-                                
-                                <!-- Body Card: Info Phòng & Thời gian -->
-                                <div class="bg-surface-container-low rounded-xl p-4 flex flex-col gap-3">
-                                    <div class="flex justify-between items-center">
-                                        <span class="text-xl font-bold text-primary"><?php echo htmlspecialchars($row['room_name'] . ' (' . $row['room_number'] . ')'); ?></span>
-                                        <span class="flex items-center gap-1 text-sm bg-white px-2 py-1 rounded shadow-sm">
-                                            <span class="material-symbols-outlined text-[16px]">group</span> 
-                                            <?php echo $row['participant_count']; ?> / <?php echo $row['capacity']; ?> người
-                                        </span>
-                                    </div>
-                                    <div class="grid grid-cols-2 gap-4 mt-2">
-                                        <div>
-                                            <span class="block text-xs font-bold text-on-surface-variant uppercase mb-1">Thời gian</span>
-                                            <span class="text-sm font-medium text-on-surface flex items-center gap-1 <?php if($is_expired) echo 'text-error line-through'; ?>">
-                                                <span class="material-symbols-outlined text-[18px] text-primary">schedule</span>
-                                                <?php echo $start_str . ' - ' . $end_str; ?>
+                                    <div class="bg-surface-container-low rounded-xl p-4 flex flex-col gap-3">
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-xl font-bold text-primary"><?php echo htmlspecialchars($row['room_name'] . ' (' . $row['room_number'] . ')'); ?></span>
+                                            <span class="flex items-center gap-1 text-sm bg-white px-2 py-1 rounded shadow-sm">
+                                                <span class="material-symbols-outlined text-[16px]">group</span> 
+                                                <?php echo $row['participant_count']; ?> / <?php echo $row['capacity']; ?>
                                             </span>
                                         </div>
-                                        <div>
-                                            <span class="block text-xs font-bold text-on-surface-variant uppercase mb-1">Mục đích</span>
-                                            <span class="text-sm text-on-surface line-clamp-2"><?php echo htmlspecialchars($row['title']); ?></span>
+                                        <div class="grid grid-cols-2 gap-4 mt-2">
+                                            <div>
+                                                <span class="block text-xs font-bold text-on-surface-variant uppercase mb-1">Thời gian</span>
+                                                <span class="text-sm font-medium text-on-surface flex items-center gap-1 <?php if($is_expired) echo 'text-error line-through'; ?>">
+                                                    <span class="material-symbols-outlined text-[18px] text-primary">schedule</span>
+                                                    <?php echo $start_str . ' - ' . $end_str; ?>
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <span class="block text-xs font-bold text-on-surface-variant uppercase mb-1">Mục đích</span>
+                                                <span class="text-sm text-on-surface line-clamp-2"><?php echo htmlspecialchars($row['title']); ?></span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                <!-- Actions Buttons trỏ về Controller -->
-                                <div class="flex gap-4 mt-auto pt-2">
-                                    <a href="index.php?controller=admin&action=processBooking&action_type=reject&id=<?php echo $row['id']; ?>" class="flex-1 py-3 rounded-xl text-center text-sm font-bold uppercase tracking-wider text-error bg-error-container/30 hover:bg-error-container transition-colors" onclick="return confirm('Bạn có chắc chắn muốn TỪ CHỐI yêu cầu này?');">
-                                        <?php echo $is_expired ? 'Xóa yêu cầu' : 'Từ chối'; ?>
-                                    </a>
-                                    
-                                    <?php if (!$is_expired): ?>
-                                    <a href="index.php?controller=admin&action=processBooking&action_type=approve&id=<?php echo $row['id']; ?>" class="flex-1 py-3 rounded-xl flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-wider text-white bg-primary hover:bg-blue-800 transition-colors shadow-md" onclick="return confirm('Xác nhận PHÊ DUYỆT yêu cầu này?');">
-                                        <span class="material-symbols-outlined text-[18px]">check_circle</span> Phê duyệt
-                                    </a>
-                                    <?php else: ?>
-                                    <button disabled class="flex-1 py-3 rounded-xl flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-wider text-white bg-gray-400 cursor-not-allowed">
-                                        <span class="material-symbols-outlined text-[18px]">block</span> Hết hạn
-                                    </button>
-                                    <?php endif; ?>
+                                    <div class="flex gap-4 mt-auto pt-2">
+                                        <a href="index.php?controller=admin&action=processBooking&action_type=reject&id=<?php echo $row['id']; ?>" class="flex-1 py-3 rounded-xl text-center text-sm font-bold uppercase tracking-wider text-error bg-error-container/30 hover:bg-error-container transition-colors" onclick="return confirm('Bạn có chắc chắn muốn TỪ CHỐI yêu cầu này?');">
+                                            <?php echo $is_expired ? 'Xóa yêu cầu' : 'Từ chối'; ?>
+                                        </a>
+                                        
+                                        <?php if (!$is_expired): ?>
+                                        <a href="index.php?controller=admin&action=processBooking&action_type=approve&id=<?php echo $row['id']; ?>" class="flex-1 py-3 rounded-xl flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-wider text-white bg-primary hover:bg-blue-800 transition-colors shadow-md" onclick="return confirm('Xác nhận PHÊ DUYỆT yêu cầu này?');">
+                                            <span class="material-symbols-outlined text-[18px]">check_circle</span> Phê duyệt
+                                        </a>
+                                        <?php else: ?>
+                                        <button disabled class="flex-1 py-3 rounded-xl flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-wider text-white bg-gray-400 cursor-not-allowed">
+                                            <span class="material-symbols-outlined text-[18px]">block</span> Hết hạn
+                                        </button>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
-                            </div>
-                            
-                            <?php
+                                <?php
+                            }
+                        } else {
+                            echo "<div class='col-span-full text-center py-10 bg-white rounded-xl shadow-sm border border-outline-variant'>";
+                            echo "<span class='material-symbols-outlined text-4xl text-gray-300 mb-2'>task</span>";
+                            echo "<p class='text-lg text-on-surface-variant'>Hiện tại không có yêu cầu nào đang chờ phê duyệt.</p>";
+                            echo "</div>";
                         }
-                    } else {
-                        echo "<div class='col-span-full text-center py-12 bg-white rounded-xl shadow-sm border border-outline-variant'>";
-                        echo "<span class='material-symbols-outlined text-4xl text-gray-300 mb-2'>task</span>";
-                        echo "<p class='text-lg text-on-surface-variant'>Hiện tại không có yêu cầu nào đang chờ phê duyệt.</p>";
-                        echo "</div>";
-                    }
-                    ?>
+                        ?>
+                    </div>
                 </div>
+
+                <!-- DANH SÁCH ĐÃ DUYỆT / LỊCH SỬ -->
+                <div class="mt-8">
+                    <h2 class="text-xl font-bold text-on-surface border-b border-outline-variant pb-2 mb-6">Lịch sử đã phê duyệt (Gần đây)</h2>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <?php
+                        if ($approved_count > 0) {
+                            foreach ($approved_bookings as $row) {
+                                $start_ts = strtotime($row['start_time']);
+                                $end_ts = strtotime($row['end_time']);
+                                $now = time();
+                                
+                                $start_str = date('H:i', $start_ts);
+                                $end_str = date('H:i, d/m/Y', $end_ts);
+                                
+                                $is_finished = ($end_ts < $now);
+                                
+                                $card_border = $is_finished ? 'border-gray-200 opacity-75' : 'border-green-200 hover:opacity-100';
+                                $accent_color = $is_finished ? 'bg-gray-400' : 'bg-green-500';
+                                ?>
+                                <div class="bg-white rounded-2xl p-6 shadow-sm border <?php echo $card_border; ?> relative flex flex-col gap-4 transition-opacity">
+                                    <div class="absolute left-0 top-0 bottom-0 w-1 <?php echo $accent_color; ?> rounded-l-2xl"></div>
+
+                                    <div class="flex justify-between items-start">
+                                        <div class="flex items-center gap-4">
+                                            <div class="w-12 h-12 rounded-full <?php echo $is_finished ? 'bg-gray-100 text-gray-600' : 'bg-green-50 text-green-700'; ?> flex items-center justify-center font-bold text-xl">
+                                                <?php echo strtoupper(substr($row['full_name'], 0, 1)); ?>
+                                            </div>
+                                            <div>
+                                                <h3 class="text-lg font-bold text-on-surface"><?php echo htmlspecialchars($row['full_name']); ?></h3>
+                                                <p class="text-sm text-on-surface-variant"><?php echo htmlspecialchars($row['email']); ?></p>
+                                            </div>
+                                        </div>
+
+                                        <?php if ($is_finished): ?>
+                                            <span class="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-bold uppercase flex items-center gap-1 border border-gray-200">
+                                                <span class="material-symbols-outlined text-[14px]">task_alt</span> Đã hoàn thành
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold uppercase flex items-center gap-1 border border-green-200">
+                                                <span class="material-symbols-outlined text-[14px]">check_circle</span> Đã duyệt
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
+                                    
+                                    <div class="<?php echo $is_finished ? 'bg-gray-50' : 'bg-green-50/50'; ?> rounded-xl p-4 flex flex-col gap-3">
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-lg font-bold <?php echo $is_finished ? 'text-gray-700' : 'text-green-800'; ?>"><?php echo htmlspecialchars($row['room_name'] . ' (' . $row['room_number'] . ')'); ?></span>
+                                            <span class="flex items-center gap-1 text-sm bg-white px-2 py-1 rounded shadow-sm text-gray-600">
+                                                <span class="material-symbols-outlined text-[16px]">group</span> 
+                                                <?php echo $row['participant_count']; ?>
+                                            </span>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-4 mt-2">
+                                            <div>
+                                                <span class="block text-xs font-bold text-gray-500 uppercase mb-1">Thời gian</span>
+                                                <span class="text-sm font-medium text-gray-800 flex items-center gap-1">
+                                                    <span class="material-symbols-outlined text-[18px] <?php echo $is_finished ? 'text-gray-500' : 'text-green-600'; ?>">schedule</span>
+                                                    <?php echo $start_str . ' - ' . $end_str; ?>
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <span class="block text-xs font-bold text-gray-500 uppercase mb-1">Mục đích</span>
+                                                <span class="text-sm text-gray-800 line-clamp-2"><?php echo htmlspecialchars($row['title']); ?></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Nút Hủy Lịch dành cho Admin nếu có sự cố thay đổi lịch -->
+                                    <div class="mt-2 text-right">
+                                        <a href="index.php?controller=admin&action=processBooking&action_type=reject&id=<?php echo $row['id']; ?>" class="text-xs font-bold text-error hover:underline" onclick="return confirm('CẢNH BÁO: Bạn có chắc chắn muốn HỦY lịch này không?');">
+                                            Hủy lịch trình này
+                                        </a>
+                                    </div>
+                                </div>
+                                <?php
+                            }
+                        } else {
+                            echo "<div class='col-span-full text-center py-6 bg-white rounded-xl shadow-sm border border-outline-variant'>";
+                            echo "<p class='text-sm text-on-surface-variant'>Chưa có yêu cầu nào được phê duyệt gần đây.</p>";
+                            echo "</div>";
+                        }
+                        ?>
+                    </div>
+                </div>
+
             </div>
         </main>
     </div>

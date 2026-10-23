@@ -57,7 +57,7 @@ $custom_str = !empty($custom_arr) ? implode(', ', $custom_arr) : '';
                            class="px-4 py-2 bg-surface-container border border-outline-variant rounded-lg focus:outline-none focus:border-primary">
                 </div>
                 <div class="flex flex-col gap-1">
-                    <label class="text-sm font-semibold text-gray-700">Mã phòng (Chỉ nhập số) *</label>
+                    <label class="text-sm font-semibold text-gray-700">Mã phòng *</label>
                     <input type="number" name="room_number" required value="<?php echo htmlspecialchars($room['room_number'] ?? ''); ?>" 
                            class="px-4 py-2 bg-surface-container border border-outline-variant rounded-lg focus:outline-none focus:border-primary" placeholder="Ví dụ: 101">
                 </div>
@@ -77,9 +77,18 @@ $custom_str = !empty($custom_arr) ? implode(', ', $custom_arr) : '';
             </div>
 
             <div class="flex flex-col gap-1">
-                <label class="text-sm font-semibold text-gray-700">Vị trí *</label>
-                <input type="text" name="location" required value="<?php echo htmlspecialchars($room['location'] ?? ''); ?>" 
-                       class="px-4 py-2 bg-surface-container border border-outline-variant rounded-lg focus:outline-none focus:border-primary">
+                <label class="text-sm font-semibold text-gray-700">Tầng*</label>
+                <select name="location" required class="px-4 py-2.5 bg-surface-container border border-outline-variant rounded-lg focus:outline-none focus:border-primary cursor-pointer appearance-none">
+                    <option value="" disabled>-- Vui lòng chọn tầng --</option>
+                    <?php 
+                        $floors = ['Tầng 1', 'Tầng 2', 'Tầng 3', 'Tầng 4', 'Tầng 5'];
+                        $current_location = $room['location'] ?? '';
+                        foreach ($floors as $f): 
+                            $selected = ($current_location === $f) ? 'selected' : '';
+                    ?>
+                        <option value="<?php echo $f; ?>" <?php echo $selected; ?>><?php echo $f; ?></option>
+                    <?php endforeach; ?>
+                </select>
             </div>
 
             <!-- PHẦN THIẾT BỊ: CHECKBOX CÓ SẴN + Ô NHẬP KHÁC -->
